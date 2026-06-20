@@ -52,3 +52,4 @@ Links: `docs/adr/`, `CONTEXT.md`, `docs/MVP.md`
 - `0011` - Use minimal observability
 - `0012` - Defer payments
 - `0013` - Use lightweight Domain-Driven Design
+- `0014` - Use UTC timestamps

@@ -80,6 +80,7 @@ The MVP is a mobile-first fasting tracker for iOS and Android. A user can track 
 - Cloud Firestore for app data.
 - Firebase Cloud Messaging for notifications.
 - Firebase Emulator Suite for local development and testing.
+- Fasting timestamps are stored and handled as UTC instants; the UI displays and edits them in the user's local timezone.
 - Local development uses the official Flutter and Firebase CLI commands directly; a wrapper command can be added later if the workflow becomes repetitive.
 - The MVP is mobile-first: iOS and Android are supported, web is optional and not guaranteed, desktop is out of scope.
 - Core fasting actions should work offline and sync later.
