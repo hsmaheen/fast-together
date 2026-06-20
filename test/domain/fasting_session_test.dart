@@ -41,6 +41,15 @@ void main() {
       expect(session.isActive, isTrue);
     });
 
+    test('has no actual duration while active', () {
+      final session = FastingSession(
+        startTime: DateTime.utc(2026, 6, 20, 8),
+        targetEndTime: DateTime.utc(2026, 6, 21),
+      );
+
+      expect(session.actualDuration, isNull);
+    });
+
     test('ends with a supplied actual end time', () {
       final session = FastingSession(
         startTime: DateTime.utc(2026, 6, 20, 8),
@@ -64,6 +73,35 @@ void main() {
       );
 
       expect(endedSession.isActive, isFalse);
+    });
+
+    test('reports actual duration after ending', () {
+      final session = FastingSession(
+        startTime: DateTime.utc(2026, 6, 20, 8),
+        targetEndTime: DateTime.utc(2026, 6, 21),
+      );
+
+      final endedSession = session.end(
+        actualEndTime: DateTime.utc(2026, 6, 21, 1),
+      );
+
+      expect(endedSession.actualDuration, const Duration(hours: 17));
+    });
+
+    test('preserves minute precision for actual duration', () {
+      final session = FastingSession(
+        startTime: DateTime.utc(2026, 6, 20, 8),
+        targetEndTime: DateTime.utc(2026, 6, 21),
+      );
+
+      final endedSession = session.end(
+        actualEndTime: DateTime.utc(2026, 6, 21, 4, 1),
+      );
+
+      expect(
+        endedSession.actualDuration,
+        const Duration(hours: 20, minutes: 1),
+      );
     });
 
     test('ends as completed when actual end reaches target end', () {

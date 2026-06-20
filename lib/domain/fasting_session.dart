@@ -48,6 +48,15 @@ class FastingSession {
 
   bool get isActive => actualEndTime == null;
 
+  Duration? get actualDuration {
+    final endTime = actualEndTime;
+    if (endTime == null) {
+      return null;
+    }
+
+    return endTime.difference(startTime);
+  }
+
   FastingResult? get result {
     final endTime = actualEndTime;
     if (endTime == null) {
