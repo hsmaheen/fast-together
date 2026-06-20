@@ -41,6 +41,91 @@ void main() {
       expect(session.isActive, isTrue);
     });
 
+    test('ends with a supplied actual end time', () {
+      final session = FastingSession(
+        startTime: DateTime.utc(2026, 6, 20, 8),
+        targetEndTime: DateTime.utc(2026, 6, 21),
+      );
+      final actualEndTime = DateTime.utc(2026, 6, 21, 1);
+
+      final endedSession = session.end(actualEndTime: actualEndTime);
+
+      expect(endedSession.actualEndTime, actualEndTime);
+    });
+
+    test('is not active after ending', () {
+      final session = FastingSession(
+        startTime: DateTime.utc(2026, 6, 20, 8),
+        targetEndTime: DateTime.utc(2026, 6, 21),
+      );
+
+      final endedSession = session.end(
+        actualEndTime: DateTime.utc(2026, 6, 21, 1),
+      );
+
+      expect(endedSession.isActive, isFalse);
+    });
+
+    test('ends as completed when actual end reaches target end', () {
+      final session = FastingSession(
+        startTime: DateTime.utc(2026, 6, 20, 8),
+        targetEndTime: DateTime.utc(2026, 6, 21),
+      );
+
+      final endedSession = session.end(
+        actualEndTime: DateTime.utc(2026, 6, 21),
+      );
+
+      expect(endedSession.result, FastingResult.completed);
+    });
+
+    test('ends early when actual end is before target end', () {
+      final session = FastingSession(
+        startTime: DateTime.utc(2026, 6, 20, 8),
+        targetEndTime: DateTime.utc(2026, 6, 21),
+      );
+
+      final endedSession = session.end(
+        actualEndTime: DateTime.utc(2026, 6, 20, 23),
+      );
+
+      expect(endedSession.result, FastingResult.endedEarly);
+    });
+
+    test('does not end with a non-UTC actual end time', () {
+      final session = FastingSession(
+        startTime: DateTime.utc(2026, 6, 20, 8),
+        targetEndTime: DateTime.utc(2026, 6, 21),
+      );
+
+      expect(
+        () => session.end(actualEndTime: DateTime(2026, 6, 21, 1)),
+        throwsArgumentError,
+      );
+    });
+
+    test('does not end at the start time', () {
+      final startTime = DateTime.utc(2026, 6, 20, 8);
+      final session = FastingSession(
+        startTime: startTime,
+        targetEndTime: DateTime.utc(2026, 6, 21),
+      );
+
+      expect(() => session.end(actualEndTime: startTime), throwsArgumentError);
+    });
+
+    test('does not end before the start time', () {
+      final session = FastingSession(
+        startTime: DateTime.utc(2026, 6, 20, 8),
+        targetEndTime: DateTime.utc(2026, 6, 21),
+      );
+
+      expect(
+        () => session.end(actualEndTime: DateTime.utc(2026, 6, 20, 7, 59)),
+        throwsArgumentError,
+      );
+    });
+
     test('rejects a non-UTC start time', () {
       expect(
         () => FastingSession(

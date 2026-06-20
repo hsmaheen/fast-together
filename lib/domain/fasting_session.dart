@@ -11,6 +11,13 @@ class FastingSession {
     _requireUtc(startTime, 'startTime');
     _requireUtc(targetEndTime, 'targetEndTime');
     _requireUtc(actualEndTime, 'actualEndTime');
+    if (actualEndTime != null && !actualEndTime.isAfter(startTime)) {
+      throw ArgumentError.value(
+        actualEndTime,
+        'actualEndTime',
+        'must be after startTime',
+      );
+    }
 
     return FastingSession._(
       startTime: startTime,
@@ -52,6 +59,14 @@ class FastingSession {
     }
 
     return FastingResult.completed;
+  }
+
+  FastingSession end({required DateTime actualEndTime}) {
+    return FastingSession(
+      startTime: startTime,
+      targetEndTime: targetEndTime,
+      actualEndTime: actualEndTime,
+    );
   }
 
   Duration elapsedAt(DateTime time) => time.difference(startTime);
