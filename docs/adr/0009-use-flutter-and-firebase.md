@@ -1,0 +1,3 @@
+# Use Flutter and Firebase
+
+The MVP will use Flutter for the iOS and Android app, Firebase Auth for authentication, Cloud Firestore for app data, Firebase Cloud Messaging for notifications, and the Firebase Emulator Suite for local development and testing. This keeps the first release fast to build and inexpensive for a small user base while still supporting real-time circle visibility and local end-to-end testing for the core flows. Local development should use the official Flutter and Firebase CLI commands directly at first; a wrapper command can be added later if the workflow becomes repetitive.
