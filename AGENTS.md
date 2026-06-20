@@ -8,9 +8,19 @@ Before changing code, read:
 
 - `CONTEXT.md`
 - `docs/MVP.md`
+- `docs/decision-log.md`
 - Relevant ADRs under `docs/adr/`
 
 Use the domain language from `CONTEXT.md` in code, tests, commits, and explanations.
+
+## Decision Tracking
+
+- Record architectural decisions as ADRs in `docs/adr/`.
+- Record durable product, domain, and process decisions in `docs/decision-log.md` when they do not need a full ADR.
+- Keep `CONTEXT.md` as the current domain glossary, not a debate log.
+- Keep `docs/MVP.md` as the current MVP scope, not a debate log.
+- Use Linear comments for work-in-progress discussion, but summarize final durable decisions back into the repo.
+- Do not rely on Git commits or Linear comments as the only record of a decision that future work must remember.
 
 ## Lightweight Domain-Driven Design
 
