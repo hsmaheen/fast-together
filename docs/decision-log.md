@@ -53,3 +53,4 @@ Links: `docs/adr/`, `CONTEXT.md`, `docs/MVP.md`
 - `0012` - Defer payments
 - `0013` - Use lightweight Domain-Driven Design
 - `0014` - Use UTC timestamps
+- `0015` - Use earned Flutter layers
