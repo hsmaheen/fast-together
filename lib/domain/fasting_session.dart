@@ -1,3 +1,5 @@
+enum FastingResult { completed, endedEarly }
+
 class FastingSession {
   const FastingSession({
     required this.startTime,
@@ -10,4 +12,23 @@ class FastingSession {
   final DateTime? actualEndTime;
 
   bool get isActive => actualEndTime == null;
+
+  FastingResult? get result {
+    final endTime = actualEndTime;
+    if (endTime == null) {
+      return null;
+    }
+
+    if (endTime.isBefore(targetEndTime)) {
+      return FastingResult.endedEarly;
+    }
+
+    return FastingResult.completed;
+  }
+
+  Duration elapsedAt(DateTime time) => time.difference(startTime);
+
+  Duration remainingAt(DateTime time) => targetEndTime.difference(time);
+
+  Duration overTargetAt(DateTime time) => time.difference(targetEndTime);
 }
