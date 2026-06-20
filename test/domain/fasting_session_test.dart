@@ -22,6 +22,16 @@ void main() {
       expect(session.isActive, isTrue);
     });
 
+    test('does not start from a non-UTC start time', () {
+      expect(
+        () => FastingSession.start(
+          startTime: DateTime(2026, 6, 20, 8),
+          plan: FastingPlan.sixteenHours,
+        ),
+        throwsArgumentError,
+      );
+    });
+
     test('is active until an actual end time is set', () {
       final session = FastingSession(
         startTime: DateTime.utc(2026, 6, 20, 8),
@@ -29,6 +39,26 @@ void main() {
       );
 
       expect(session.isActive, isTrue);
+    });
+
+    test('rejects a non-UTC start time', () {
+      expect(
+        () => FastingSession(
+          startTime: DateTime(2026, 6, 20, 8),
+          targetEndTime: DateTime.utc(2026, 6, 21),
+        ),
+        throwsArgumentError,
+      );
+    });
+
+    test('rejects a non-UTC target end time', () {
+      expect(
+        () => FastingSession(
+          startTime: DateTime.utc(2026, 6, 20, 8),
+          targetEndTime: DateTime(2026, 6, 21),
+        ),
+        throwsArgumentError,
+      );
     });
 
     test('is not active after an actual end time is set', () {
@@ -39,6 +69,17 @@ void main() {
       );
 
       expect(session.isActive, isFalse);
+    });
+
+    test('rejects a non-UTC actual end time', () {
+      expect(
+        () => FastingSession(
+          startTime: DateTime.utc(2026, 6, 20, 8),
+          targetEndTime: DateTime.utc(2026, 6, 21),
+          actualEndTime: DateTime(2026, 6, 21, 1),
+        ),
+        throwsArgumentError,
+      );
     });
 
     test('reports elapsed duration at a given time', () {

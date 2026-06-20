@@ -3,7 +3,23 @@ import 'package:fasting_app/domain/fasting_plan.dart';
 enum FastingResult { completed, endedEarly }
 
 class FastingSession {
-  const FastingSession({
+  factory FastingSession({
+    required DateTime startTime,
+    required DateTime targetEndTime,
+    DateTime? actualEndTime,
+  }) {
+    _requireUtc(startTime, 'startTime');
+    _requireUtc(targetEndTime, 'targetEndTime');
+    _requireUtc(actualEndTime, 'actualEndTime');
+
+    return FastingSession._(
+      startTime: startTime,
+      targetEndTime: targetEndTime,
+      actualEndTime: actualEndTime,
+    );
+  }
+
+  const FastingSession._({
     required this.startTime,
     required this.targetEndTime,
     this.actualEndTime,
@@ -43,4 +59,10 @@ class FastingSession {
   Duration remainingAt(DateTime time) => targetEndTime.difference(time);
 
   Duration overTargetAt(DateTime time) => time.difference(targetEndTime);
+}
+
+void _requireUtc(DateTime? time, String name) {
+  if (time != null && !time.isUtc) {
+    throw ArgumentError.value(time, name, 'must be UTC');
+  }
 }
