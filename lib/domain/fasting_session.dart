@@ -1,3 +1,5 @@
+import 'package:fasting_app/domain/fasting_plan.dart';
+
 enum FastingResult { completed, endedEarly }
 
 class FastingSession {
@@ -6,6 +8,16 @@ class FastingSession {
     required this.targetEndTime,
     this.actualEndTime,
   });
+
+  factory FastingSession.start({
+    required DateTime startTime,
+    required FastingPlan plan,
+  }) {
+    return FastingSession(
+      startTime: startTime,
+      targetEndTime: plan.targetEndTimeFrom(startTime),
+    );
+  }
 
   final DateTime startTime;
   final DateTime targetEndTime;
