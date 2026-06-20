@@ -78,6 +78,18 @@ class FastingSession {
     );
   }
 
+  FastingSession correctActualEndTime({required DateTime actualEndTime}) {
+    if (isActive) {
+      throw StateError('Cannot correct actualEndTime for an active session');
+    }
+
+    return FastingSession(
+      startTime: startTime,
+      targetEndTime: targetEndTime,
+      actualEndTime: actualEndTime,
+    );
+  }
+
   Duration elapsedAt(DateTime time) => time.difference(startTime);
 
   Duration remainingAt(DateTime time) => targetEndTime.difference(time);

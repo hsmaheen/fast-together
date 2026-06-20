@@ -104,6 +104,110 @@ void main() {
       );
     });
 
+    test('corrects actual end time after ending', () {
+      final endedSession = FastingSession(
+        startTime: DateTime.utc(2026, 6, 20, 8),
+        targetEndTime: DateTime.utc(2026, 6, 21),
+        actualEndTime: DateTime.utc(2026, 6, 21, 1),
+      );
+      final correctedEndTime = DateTime.utc(2026, 6, 21, 0, 30);
+
+      final correctedSession = endedSession.correctActualEndTime(
+        actualEndTime: correctedEndTime,
+      );
+
+      expect(correctedSession.actualEndTime, correctedEndTime);
+    });
+
+    test('recalculates actual duration after correcting actual end time', () {
+      final endedSession = FastingSession(
+        startTime: DateTime.utc(2026, 6, 20, 8),
+        targetEndTime: DateTime.utc(2026, 6, 21),
+        actualEndTime: DateTime.utc(2026, 6, 21, 1),
+      );
+
+      final correctedSession = endedSession.correctActualEndTime(
+        actualEndTime: DateTime.utc(2026, 6, 20, 20, 30),
+      );
+
+      expect(
+        correctedSession.actualDuration,
+        const Duration(hours: 12, minutes: 30),
+      );
+    });
+
+    test('recalculates result after correcting actual end time', () {
+      final endedSession = FastingSession(
+        startTime: DateTime.utc(2026, 6, 20, 8),
+        targetEndTime: DateTime.utc(2026, 6, 21),
+        actualEndTime: DateTime.utc(2026, 6, 21, 1),
+      );
+
+      final correctedSession = endedSession.correctActualEndTime(
+        actualEndTime: DateTime.utc(2026, 6, 20, 23, 30),
+      );
+
+      expect(correctedSession.result, FastingResult.endedEarly);
+    });
+
+    test('does not correct to a non-UTC actual end time', () {
+      final endedSession = FastingSession(
+        startTime: DateTime.utc(2026, 6, 20, 8),
+        targetEndTime: DateTime.utc(2026, 6, 21),
+        actualEndTime: DateTime.utc(2026, 6, 21, 1),
+      );
+
+      expect(
+        () => endedSession.correctActualEndTime(
+          actualEndTime: DateTime(2026, 6, 21),
+        ),
+        throwsArgumentError,
+      );
+    });
+
+    test('does not correct actual end time to the start time', () {
+      final startTime = DateTime.utc(2026, 6, 20, 8);
+      final endedSession = FastingSession(
+        startTime: startTime,
+        targetEndTime: DateTime.utc(2026, 6, 21),
+        actualEndTime: DateTime.utc(2026, 6, 21, 1),
+      );
+
+      expect(
+        () => endedSession.correctActualEndTime(actualEndTime: startTime),
+        throwsArgumentError,
+      );
+    });
+
+    test('does not correct actual end time before the start time', () {
+      final endedSession = FastingSession(
+        startTime: DateTime.utc(2026, 6, 20, 8),
+        targetEndTime: DateTime.utc(2026, 6, 21),
+        actualEndTime: DateTime.utc(2026, 6, 21, 1),
+      );
+
+      expect(
+        () => endedSession.correctActualEndTime(
+          actualEndTime: DateTime.utc(2026, 6, 20, 7, 59),
+        ),
+        throwsArgumentError,
+      );
+    });
+
+    test('does not correct actual end time while active', () {
+      final session = FastingSession(
+        startTime: DateTime.utc(2026, 6, 20, 8),
+        targetEndTime: DateTime.utc(2026, 6, 21),
+      );
+
+      expect(
+        () => session.correctActualEndTime(
+          actualEndTime: DateTime.utc(2026, 6, 21, 1),
+        ),
+        throwsStateError,
+      );
+    });
+
     test('ends as completed when actual end reaches target end', () {
       final session = FastingSession(
         startTime: DateTime.utc(2026, 6, 20, 8),
