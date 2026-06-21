@@ -61,6 +61,15 @@ class FastingTracker {
       actualEndTime: actualEndTime,
     );
   }
+
+  void deleteLatestEndedSession() {
+    final session = latestSession;
+    if (session == null || session.isActive) {
+      throw StateError('Cannot delete without an ended Fasting Session');
+    }
+
+    _currentSession = null;
+  }
 }
 
 void _requireNotFuture(DateTime time, String name, DateTime nowUtc) {

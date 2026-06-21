@@ -151,6 +151,12 @@ class _LocalFastingStatusSectionState extends State<LocalFastingStatusSection> {
           const SizedBox(height: 20),
           LatestFastingSessionSummary(
             session: latestSession,
+            onDeletePressed: () {
+              setState(() {
+                _tracker.deleteLatestEndedSession();
+                _latestSessionErrorMessage = null;
+              });
+            },
             onActualEndTimeChanged: (actualEndTime) {
               setState(() {
                 if (!actualEndTime.isAfter(latestSession.startTime)) {

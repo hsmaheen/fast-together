@@ -6,6 +6,7 @@ class LatestFastingSessionSummary extends StatelessWidget {
   const LatestFastingSessionSummary({
     required this.session,
     this.onActualEndTimeChanged,
+    this.onDeletePressed,
     this.selectActualEndTime,
     this.errorMessage,
     super.key,
@@ -13,6 +14,7 @@ class LatestFastingSessionSummary extends StatelessWidget {
 
   final FastingSession session;
   final ValueChanged<DateTime>? onActualEndTimeChanged;
+  final VoidCallback? onDeletePressed;
   final ActualEndTimePicker? selectActualEndTime;
   final String? errorMessage;
 
@@ -41,7 +43,26 @@ class LatestFastingSessionSummary extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('Latest Fasting Session', style: theme.textTheme.titleSmall),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Latest Fasting Session',
+                    style: theme.textTheme.titleSmall,
+                  ),
+                ),
+                if (onDeletePressed != null) ...[
+                  const SizedBox(width: 8),
+                  TextButton(
+                    onPressed: onDeletePressed,
+                    style: TextButton.styleFrom(
+                      foregroundColor: theme.colorScheme.error,
+                    ),
+                    child: const Text('Delete'),
+                  ),
+                ],
+              ],
+            ),
             const SizedBox(height: 12),
             _SummaryRow(label: 'Result', value: _formatResult(result)),
             const SizedBox(height: 8),

@@ -129,6 +129,32 @@ void main() {
       },
     );
 
+    test('deletes the latest ended Fasting Session', () {
+      final tracker = trackerAfterTestSessions();
+      tracker.start(
+        startTime: DateTime.utc(2026, 6, 21, 8),
+        plan: FastingPlan.sixteenHours,
+      );
+      tracker.end(actualEndTime: DateTime.utc(2026, 6, 22, 1));
+
+      tracker.deleteLatestEndedSession();
+
+      expect(tracker.latestSession, isNull);
+      expect(tracker.activeSession, isNull);
+      expect(tracker.status, FastingStatus.notFasting);
+    });
+
+    test('does not delete an active Fasting Session', () {
+      final tracker = trackerAfterTestSessions();
+      final startTime = DateTime.utc(2026, 6, 21, 8);
+      tracker.start(startTime: startTime, plan: FastingPlan.sixteenHours);
+
+      expect(() => tracker.deleteLatestEndedSession(), throwsStateError);
+
+      expect(tracker.activeSession?.startTime, startTime);
+      expect(tracker.status, FastingStatus.fasting);
+    });
+
     test('corrects the latest ended Fasting Session actual end time', () {
       final tracker = trackerAfterTestSessions();
       tracker.start(

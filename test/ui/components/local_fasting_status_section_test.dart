@@ -259,6 +259,42 @@ void main() {
     expect(find.text('16h 0m'), findsOneWidget);
   });
 
+  testWidgets('deletes the latest ended Fasting Session summary', (
+    tester,
+  ) async {
+    var now = DateTime.utc(2026, 6, 21, 4, 15);
+    final tracker = FastingTracker(nowUtc: () => now);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: LocalFastingStatusSection(nowUtc: () => now, tracker: tracker),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('Start 16h Fasting Session'));
+    await tester.pump();
+
+    now = DateTime.utc(2026, 6, 21, 5, 15);
+    await tester.tap(find.text('End Fasting Session'));
+    await tester.pump();
+
+    expect(find.byType(LatestFastingSessionSummary), findsOneWidget);
+
+    await tester.tap(
+      find.descendant(
+        of: find.byType(LatestFastingSessionSummary),
+        matching: find.text('Delete'),
+      ),
+    );
+    await tester.pump();
+
+    expect(tracker.latestSession, isNull);
+    expect(find.byType(LatestFastingSessionSummary), findsNothing);
+    expect(find.text('Not Fasting'), findsOneWidget);
+  });
+
   testWidgets(
     'does not correct latest ended session to a future actual end time',
     (tester) async {
