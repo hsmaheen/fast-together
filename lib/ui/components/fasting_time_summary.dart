@@ -19,6 +19,7 @@ class FastingTimeSummary extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final localizations = MaterialLocalizations.of(context);
+    final showDateContext = !_isSameLocalDate(startTime, targetEndTime);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -26,24 +27,26 @@ class FastingTimeSummary extends StatelessWidget {
       children: [
         _SummaryRow(
           label: 'Start Time',
-          value: _formatTime(localizations, startTime),
+          value: _formatTime(
+            localizations,
+            startTime,
+            includeDate: showDateContext,
+          ),
         ),
         const SizedBox(height: 8),
         _SummaryRow(
           label: 'Target End Time',
-          value: _formatTime(localizations, targetEndTime),
+          value: _formatTime(
+            localizations,
+            targetEndTime,
+            includeDate: showDateContext,
+          ),
         ),
         const SizedBox(height: 8),
-        _SummaryRow(
-          label: 'Elapsed',
-          value: _formatDuration(elapsed),
-        ),
+        _SummaryRow(label: 'Elapsed', value: _formatDuration(elapsed)),
         if (remaining != null) ...[
           const SizedBox(height: 8),
-          _SummaryRow(
-            label: 'Remaining',
-            value: _formatDuration(remaining!),
-          ),
+          _SummaryRow(label: 'Remaining', value: _formatDuration(remaining!)),
         ] else if (overTarget != null) ...[
           const SizedBox(height: 8),
           _SummaryRow(
@@ -55,12 +58,30 @@ class FastingTimeSummary extends StatelessWidget {
     );
   }
 
-  String _formatTime(MaterialLocalizations localizations, DateTime value) {
-    final localValue = value.toLocal();
+  bool _isSameLocalDate(DateTime first, DateTime second) {
+    final firstLocal = first.toLocal();
+    final secondLocal = second.toLocal();
 
-    return localizations.formatTimeOfDay(
+    return firstLocal.year == secondLocal.year &&
+        firstLocal.month == secondLocal.month &&
+        firstLocal.day == secondLocal.day;
+  }
+
+  String _formatTime(
+    MaterialLocalizations localizations,
+    DateTime value, {
+    required bool includeDate,
+  }) {
+    final localValue = value.toLocal();
+    final time = localizations.formatTimeOfDay(
       TimeOfDay.fromDateTime(localValue),
     );
+
+    if (!includeDate) {
+      return time;
+    }
+
+    return '${localizations.formatMediumDate(localValue)} $time';
   }
 
   String _formatDuration(Duration duration) {
@@ -76,10 +97,7 @@ class FastingTimeSummary extends StatelessWidget {
 }
 
 class _SummaryRow extends StatelessWidget {
-  const _SummaryRow({
-    required this.label,
-    required this.value,
-  });
+  const _SummaryRow({required this.label, required this.value});
 
   final String label;
   final String value;
@@ -91,12 +109,7 @@ class _SummaryRow extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(
-          child: Text(
-            label,
-            style: theme.textTheme.labelLarge,
-          ),
-        ),
+        Expanded(child: Text(label, style: theme.textTheme.labelLarge)),
         const SizedBox(width: 12),
         Flexible(
           child: Text(

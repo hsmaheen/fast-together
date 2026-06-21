@@ -21,6 +21,39 @@ void main() {
     expect(find.text('Target End Time'), findsOneWidget);
   });
 
+  testWidgets('shows date context when target end is on another day', (
+    tester,
+  ) async {
+    final startTime = DateTime.utc(2026, 6, 21, 0);
+    final targetEndTime = DateTime.utc(2026, 6, 23, 0);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: FastingTimeSummary(
+            startTime: startTime,
+            targetEndTime: targetEndTime,
+            elapsed: const Duration(hours: 4),
+            remaining: const Duration(hours: 44),
+          ),
+        ),
+      ),
+    );
+
+    final localizations = MaterialLocalizations.of(
+      tester.element(find.byType(FastingTimeSummary)),
+    );
+
+    expect(
+      find.text(_formatDateAndTime(localizations, startTime)),
+      findsOneWidget,
+    );
+    expect(
+      find.text(_formatDateAndTime(localizations, targetEndTime)),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('shows elapsed and remaining time', (tester) async {
     await tester.pumpWidget(
       MaterialApp(
@@ -62,4 +95,14 @@ void main() {
     expect(find.text('Over Target'), findsOneWidget);
     expect(find.text('1h 30m'), findsOneWidget);
   });
+}
+
+String _formatDateAndTime(MaterialLocalizations localizations, DateTime value) {
+  final localValue = value.toLocal();
+  final date = localizations.formatMediumDate(localValue);
+  final time = localizations.formatTimeOfDay(
+    TimeOfDay.fromDateTime(localValue),
+  );
+
+  return '$date $time';
 }

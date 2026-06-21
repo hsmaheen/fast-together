@@ -21,6 +21,7 @@ The MVP is a mobile-first fasting tracker for iOS and Android. A user can track 
 - The user chooses a Fasting Plan from 10, 12, 14, 16, 18, 24, or 48 hours, or enters a custom whole-hour duration from 1 to 168 hours.
 - The start time is user-set, so a user can start now while recording that the fast began earlier.
 - The target end time is a goal, not an automatic stop.
+- Overnight and multi-day sessions show local date context where needed so start and target end times are not ambiguous.
 - The session remains active until the user ends it.
 - When ending a session, the user can set the actual end time.
 - The actual end time of an ended session can be corrected later.

@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  testWidgets('displays the selected start time', (tester) async {
+  testWidgets('displays the selected start date and time', (tester) async {
     final selectedStartTime = DateTime.utc(2026, 6, 21, 4, 15);
 
     await tester.pumpWidget(
@@ -22,12 +22,34 @@ void main() {
     final localizations = MaterialLocalizations.of(
       tester.element(find.byType(StartTimeSelector)),
     );
-    final expectedStartTime = localizations.formatTimeOfDay(
-      TimeOfDay.fromDateTime(selectedStartTime.toLocal()),
+    final expectedStartTime = _formatDateAndTime(
+      localizations,
+      selectedStartTime,
     );
 
     expect(find.text('Start Time'), findsOneWidget);
     expect(find.text(expectedStartTime), findsOneWidget);
+    expect(find.text('Edit'), findsOneWidget);
+  });
+
+  testWidgets('fits the selected start date and edit action in compact width', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SizedBox(
+            width: 220,
+            child: StartTimeSelector(
+              selectedStartTime: DateTime.utc(2026, 6, 21, 4, 15),
+              onChanged: (_) {},
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(tester.takeException(), isNull);
     expect(find.text('Edit'), findsOneWidget);
   });
 
@@ -69,10 +91,8 @@ void main() {
               changedStartTime = value;
             },
             selectDate: (_, _) async => DateTime(2026, 6, 20),
-            selectClockTime: (_, _) async => const TimeOfDay(
-              hour: 8,
-              minute: 30,
-            ),
+            selectClockTime: (_, _) async =>
+                const TimeOfDay(hour: 8, minute: 30),
           ),
         ),
       ),
@@ -109,11 +129,7 @@ void main() {
     await tester.pump();
 
     await tester.pumpWidget(
-      const MaterialApp(
-        home: Scaffold(
-          body: SizedBox.shrink(),
-        ),
-      ),
+      const MaterialApp(home: Scaffold(body: SizedBox.shrink())),
     );
 
     pickerResult.complete(DateTime.utc(2026, 6, 21, 0, 15));
@@ -121,4 +137,14 @@ void main() {
 
     expect(didChange, isFalse);
   });
+}
+
+String _formatDateAndTime(MaterialLocalizations localizations, DateTime value) {
+  final localValue = value.toLocal();
+  final date = localizations.formatMediumDate(localValue);
+  final time = localizations.formatTimeOfDay(
+    TimeOfDay.fromDateTime(localValue),
+  );
+
+  return '$date $time';
 }

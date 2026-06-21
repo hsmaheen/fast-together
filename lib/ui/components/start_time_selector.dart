@@ -1,19 +1,22 @@
 import 'package:flutter/material.dart';
 
-typedef StartTimePicker = Future<DateTime?> Function(
-  BuildContext context,
-  DateTime selectedStartTime,
-);
+typedef StartTimePicker =
+    Future<DateTime?> Function(
+      BuildContext context,
+      DateTime selectedStartTime,
+    );
 
-typedef StartDatePicker = Future<DateTime?> Function(
-  BuildContext context,
-  DateTime selectedLocalDate,
-);
+typedef StartDatePicker =
+    Future<DateTime?> Function(
+      BuildContext context,
+      DateTime selectedLocalDate,
+    );
 
-typedef StartClockTimePicker = Future<TimeOfDay?> Function(
-  BuildContext context,
-  DateTime selectedLocalDateTime,
-);
+typedef StartClockTimePicker =
+    Future<TimeOfDay?> Function(
+      BuildContext context,
+      DateTime selectedLocalDateTime,
+    );
 
 class StartTimeSelector extends StatelessWidget {
   const StartTimeSelector({
@@ -39,21 +42,21 @@ class StartTimeSelector extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              'Start Time',
-              style: theme.textTheme.labelLarge,
-            ),
-            const SizedBox(height: 4),
-            Text(
-              _formatTime(localizations, selectedStartTime),
-              style: theme.textTheme.bodyMedium,
-            ),
-          ],
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('Start Time', style: theme.textTheme.labelLarge),
+              const SizedBox(height: 4),
+              Text(
+                _formatDateAndTime(localizations, selectedStartTime),
+                style: theme.textTheme.bodyMedium,
+              ),
+            ],
+          ),
         ),
+        const SizedBox(width: 12),
         TextButton(
           onPressed: () => _selectStartTime(context),
           child: const Text('Edit'),
@@ -148,11 +151,16 @@ class StartTimeSelector extends StatelessWidget {
     ).toUtc();
   }
 
-  String _formatTime(MaterialLocalizations localizations, DateTime value) {
+  String _formatDateAndTime(
+    MaterialLocalizations localizations,
+    DateTime value,
+  ) {
     final localValue = value.toLocal();
-
-    return localizations.formatTimeOfDay(
+    final date = localizations.formatMediumDate(localValue);
+    final time = localizations.formatTimeOfDay(
       TimeOfDay.fromDateTime(localValue),
     );
+
+    return '$date $time';
   }
 }
