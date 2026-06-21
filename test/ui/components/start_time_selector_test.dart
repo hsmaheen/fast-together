@@ -46,6 +46,36 @@ void main() {
     expect(changedStartTime?.isUtc, isTrue);
   });
 
+  testWidgets('emits a corrected UTC start time from a previous date', (
+    tester,
+  ) async {
+    DateTime? changedStartTime;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: StartTimeSelector(
+            selectedStartTime: DateTime.utc(2026, 6, 21, 4, 15),
+            onChanged: (value) {
+              changedStartTime = value;
+            },
+            selectDate: (_, _) async => DateTime(2026, 6, 20),
+            selectClockTime: (_, _) async => const TimeOfDay(
+              hour: 8,
+              minute: 30,
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('Edit'));
+    await tester.pump();
+
+    expect(changedStartTime, DateTime(2026, 6, 20, 8, 30).toUtc());
+    expect(changedStartTime?.isUtc, isTrue);
+  });
+
   testWidgets('does not emit a corrected start time after disposal', (
     tester,
   ) async {
