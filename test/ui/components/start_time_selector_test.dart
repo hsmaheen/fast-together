@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:fasting_app/ui/components/start_time_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -42,5 +44,42 @@ void main() {
 
     expect(changedStartTime, DateTime.utc(2026, 6, 21, 0, 15));
     expect(changedStartTime?.isUtc, isTrue);
+  });
+
+  testWidgets('does not emit a corrected start time after disposal', (
+    tester,
+  ) async {
+    final pickerResult = Completer<DateTime?>();
+    var didChange = false;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: StartTimeSelector(
+            selectedStartTime: DateTime.utc(2026, 6, 21, 4, 15),
+            onChanged: (_) {
+              didChange = true;
+            },
+            selectStartTime: (_, _) => pickerResult.future,
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('Edit'));
+    await tester.pump();
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: SizedBox.shrink(),
+        ),
+      ),
+    );
+
+    pickerResult.complete(DateTime.utc(2026, 6, 21, 0, 15));
+    await tester.pump();
+
+    expect(didChange, isFalse);
   });
 }

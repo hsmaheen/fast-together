@@ -54,6 +54,10 @@ class StartTimeSelector extends StatelessWidget {
       selectedStartTime,
     );
 
+    if (!context.mounted) {
+      return;
+    }
+
     if (selected != null) {
       onChanged(selected.toUtc());
     }
