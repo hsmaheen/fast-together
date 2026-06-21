@@ -52,18 +52,12 @@ void main() {
     expect(find.text('16h 0m'), findsOneWidget);
   });
 
-  testWidgets('updates active Fasting Status as time passes', (
-    tester,
-  ) async {
+  testWidgets('updates active Fasting Status as time passes', (tester) async {
     var now = DateTime.utc(2026, 6, 21, 4, 15);
 
     await tester.pumpWidget(
       MaterialApp(
-        home: Scaffold(
-          body: LocalFastingStatusSection(
-            nowUtc: () => now,
-          ),
-        ),
+        home: Scaffold(body: LocalFastingStatusSection(nowUtc: () => now)),
       ),
     );
 
@@ -138,11 +132,7 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
-        home: Scaffold(
-          body: LocalFastingStatusSection(
-            nowUtc: () => now,
-          ),
-        ),
+        home: Scaffold(body: LocalFastingStatusSection(nowUtc: () => now)),
       ),
     );
 
@@ -168,10 +158,7 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
-          body: LocalFastingStatusSection(
-            nowUtc: () => now,
-            tracker: tracker,
-          ),
+          body: LocalFastingStatusSection(nowUtc: () => now, tracker: tracker),
         ),
       ),
     );
@@ -187,5 +174,111 @@ void main() {
     expect(tracker.latestSession?.actualEndTime, now);
     expect(tracker.latestSession?.actualDuration, const Duration(hours: 1));
     expect(tracker.latestSession?.result, FastingResult.endedEarly);
+  });
+
+  testWidgets('ends a Fasting Session from the corrected actual end time', (
+    tester,
+  ) async {
+    var now = DateTime.utc(2026, 6, 21, 4, 15);
+    final tracker = FastingTracker(nowUtc: () => now);
+    final correctedActualEndTime = DateTime.utc(2026, 6, 21, 4, 45);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: LocalFastingStatusSection(
+            nowUtc: () => now,
+            tracker: tracker,
+            selectActualEndTime: (_, _) async => correctedActualEndTime,
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('Start 16h Fasting Session'));
+    await tester.pump();
+
+    now = DateTime.utc(2026, 6, 21, 5, 15);
+    await tester.tap(find.text('Edit'));
+    await tester.pump();
+    await tester.tap(find.text('End Fasting Session'));
+    await tester.pump();
+
+    expect(tracker.activeSession, isNull);
+    expect(tracker.latestSession?.actualEndTime, correctedActualEndTime);
+    expect(tracker.latestSession?.actualDuration, const Duration(minutes: 30));
+    expect(tracker.latestSession?.result, FastingResult.endedEarly);
+  });
+
+  testWidgets('does not end from a future corrected actual end time', (
+    tester,
+  ) async {
+    var now = DateTime.utc(2026, 6, 21, 4, 15);
+    final tracker = FastingTracker(nowUtc: () => now);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: LocalFastingStatusSection(
+            nowUtc: () => now,
+            tracker: tracker,
+            selectActualEndTime: (_, _) async =>
+                DateTime.utc(2026, 6, 21, 5, 16),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('Start 16h Fasting Session'));
+    await tester.pump();
+
+    now = DateTime.utc(2026, 6, 21, 5, 15);
+    await tester.tap(find.text('Edit'));
+    await tester.pump();
+    await tester.tap(find.text('End Fasting Session'));
+    await tester.pump();
+
+    expect(tracker.activeSession, isNotNull);
+    expect(find.text('Fasting'), findsOneWidget);
+    expect(
+      find.text('Actual end time cannot be in the future'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('does not end before the Fasting Session start time', (
+    tester,
+  ) async {
+    var now = DateTime.utc(2026, 6, 21, 4, 15);
+    final tracker = FastingTracker(nowUtc: () => now);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: LocalFastingStatusSection(
+            nowUtc: () => now,
+            tracker: tracker,
+            selectActualEndTime: (_, _) async =>
+                DateTime.utc(2026, 6, 21, 4, 14),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('Start 16h Fasting Session'));
+    await tester.pump();
+
+    now = DateTime.utc(2026, 6, 21, 5, 15);
+    await tester.tap(find.text('Edit'));
+    await tester.pump();
+    await tester.tap(find.text('End Fasting Session'));
+    await tester.pump();
+
+    expect(tracker.activeSession, isNotNull);
+    expect(find.text('Fasting'), findsOneWidget);
+    expect(
+      find.text('Actual end time must be after the start time'),
+      findsOneWidget,
+    );
   });
 }

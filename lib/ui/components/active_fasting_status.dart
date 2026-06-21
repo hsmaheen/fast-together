@@ -1,4 +1,5 @@
 import 'package:fasting_app/domain/fasting_session.dart';
+import 'package:fasting_app/ui/components/actual_end_time_selector.dart';
 import 'package:fasting_app/ui/components/fasting_progress_ring.dart';
 import 'package:fasting_app/ui/components/fasting_time_summary.dart';
 import 'package:flutter/material.dart';
@@ -7,13 +8,21 @@ class ActiveFastingStatus extends StatelessWidget {
   const ActiveFastingStatus({
     required this.session,
     required this.currentTime,
+    required this.selectedActualEndTime,
+    required this.onActualEndTimeChanged,
     required this.onEndPressed,
+    this.errorMessage,
+    this.selectActualEndTime,
     super.key,
   });
 
   final FastingSession session;
   final DateTime currentTime;
+  final DateTime selectedActualEndTime;
+  final ValueChanged<DateTime> onActualEndTimeChanged;
   final VoidCallback onEndPressed;
+  final String? errorMessage;
+  final ActualEndTimePicker? selectActualEndTime;
 
   @override
   Widget build(BuildContext context) {
@@ -26,10 +35,7 @@ class ActiveFastingStatus extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(
-          'Fasting',
-          style: Theme.of(context).textTheme.titleLarge,
-        ),
+        Text('Fasting', style: Theme.of(context).textTheme.titleLarge),
         const SizedBox(height: 16),
         LayoutBuilder(
           builder: (context, constraints) {
@@ -71,6 +77,21 @@ class ActiveFastingStatus extends StatelessWidget {
             );
           },
         ),
+        const SizedBox(height: 20),
+        ActualEndTimeSelector(
+          selectedActualEndTime: selectedActualEndTime,
+          onChanged: onActualEndTimeChanged,
+          selectActualEndTime: selectActualEndTime,
+        ),
+        if (errorMessage != null) ...[
+          const SizedBox(height: 8),
+          Text(
+            errorMessage!,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: Theme.of(context).colorScheme.error,
+            ),
+          ),
+        ],
         const SizedBox(height: 20),
         FilledButton(
           onPressed: onEndPressed,

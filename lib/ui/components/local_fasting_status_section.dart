@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:fasting_app/application/fasting_tracker.dart';
 import 'package:fasting_app/domain/fasting_plan.dart';
+import 'package:fasting_app/ui/components/actual_end_time_selector.dart';
 import 'package:fasting_app/ui/components/active_fasting_status.dart';
 import 'package:fasting_app/ui/components/fasting_plan_selector.dart';
 import 'package:fasting_app/ui/components/start_fast_button.dart';
@@ -12,12 +13,14 @@ class LocalFastingStatusSection extends StatefulWidget {
   const LocalFastingStatusSection({
     required this.nowUtc,
     this.selectStartTime,
+    this.selectActualEndTime,
     this.tracker,
     super.key,
   });
 
   final DateTime Function() nowUtc;
   final StartTimePicker? selectStartTime;
+  final ActualEndTimePicker? selectActualEndTime;
   final FastingTracker? tracker;
 
   @override
@@ -28,6 +31,7 @@ class LocalFastingStatusSection extends StatefulWidget {
 class _LocalFastingStatusSectionState extends State<LocalFastingStatusSection> {
   FastingPlan _selectedPlan = FastingPlan.sixteenHours;
   DateTime? _selectedStartTime;
+  DateTime? _correctedActualEndTime;
   late final FastingTracker _tracker;
   late final Timer _statusTicker;
   String? _errorMessage;
@@ -58,12 +62,33 @@ class _LocalFastingStatusSectionState extends State<LocalFastingStatusSection> {
       return ActiveFastingStatus(
         session: activeSession,
         currentTime: widget.nowUtc(),
-        onEndPressed: () {
+        selectedActualEndTime: _correctedActualEndTime ?? widget.nowUtc(),
+        onActualEndTimeChanged: (actualEndTime) {
           setState(() {
-            _tracker.end(actualEndTime: widget.nowUtc());
-            _selectedStartTime = widget.nowUtc();
+            _correctedActualEndTime = actualEndTime;
+            _errorMessage = null;
           });
         },
+        onEndPressed: () {
+          setState(() {
+            final actualEndTime = _correctedActualEndTime ?? widget.nowUtc();
+            if (!actualEndTime.isAfter(activeSession.startTime)) {
+              _errorMessage = 'Actual end time must be after the start time';
+              return;
+            }
+
+            try {
+              _tracker.end(actualEndTime: actualEndTime);
+              _selectedStartTime = widget.nowUtc();
+              _correctedActualEndTime = null;
+              _errorMessage = null;
+            } on ArgumentError {
+              _errorMessage = 'Actual end time cannot be in the future';
+            }
+          });
+        },
+        errorMessage: _errorMessage,
+        selectActualEndTime: widget.selectActualEndTime,
       );
     }
 
@@ -71,10 +96,7 @@ class _LocalFastingStatusSectionState extends State<LocalFastingStatusSection> {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(
-          'Not Fasting',
-          style: Theme.of(context).textTheme.titleLarge,
-        ),
+        Text('Not Fasting', style: Theme.of(context).textTheme.titleLarge),
         const SizedBox(height: 16),
         FastingPlanSelector(
           selectedPlan: _selectedPlan,
@@ -114,6 +136,7 @@ class _LocalFastingStatusSectionState extends State<LocalFastingStatusSection> {
                   plan: _selectedPlan,
                 );
                 _errorMessage = null;
+                _correctedActualEndTime = null;
               } on ArgumentError {
                 _errorMessage = 'Start time cannot be in the future';
               }
