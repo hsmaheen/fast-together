@@ -1,0 +1,191 @@
+import 'package:fasting_app/application/fasting_tracker.dart';
+import 'package:fasting_app/domain/fasting_session.dart';
+import 'package:fasting_app/ui/components/fasting_plan_selector.dart';
+import 'package:fasting_app/ui/components/active_fasting_status.dart';
+import 'package:fasting_app/ui/components/local_fasting_status_section.dart';
+import 'package:fasting_app/ui/components/start_fast_button.dart';
+import 'package:fasting_app/ui/components/start_time_selector.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+
+void main() {
+  testWidgets('starts as Not Fasting with plan selection and start action', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: LocalFastingStatusSection(
+            nowUtc: () => DateTime.utc(2026, 6, 21, 4, 15),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('Not Fasting'), findsOneWidget);
+    expect(find.byType(FastingPlanSelector), findsOneWidget);
+    expect(find.byType(StartTimeSelector), findsOneWidget);
+    expect(find.byType(StartFastButton), findsOneWidget);
+    expect(find.text('Start 16h Fasting Session'), findsOneWidget);
+  });
+
+  testWidgets('starts a local active Fasting Session from the selected plan', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: LocalFastingStatusSection(
+            nowUtc: () => DateTime.utc(2026, 6, 21, 4, 15),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('Start 16h Fasting Session'));
+    await tester.pump();
+
+    expect(find.text('Not Fasting'), findsNothing);
+    expect(find.byType(ActiveFastingStatus), findsOneWidget);
+    expect(find.text('Fasting'), findsOneWidget);
+    expect(find.text('Remaining'), findsOneWidget);
+    expect(find.text('16h 0m'), findsOneWidget);
+  });
+
+  testWidgets('updates active Fasting Status as time passes', (
+    tester,
+  ) async {
+    var now = DateTime.utc(2026, 6, 21, 4, 15);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: LocalFastingStatusSection(
+            nowUtc: () => now,
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('Start 16h Fasting Session'));
+    await tester.pump();
+
+    expect(find.text('16h 0m'), findsOneWidget);
+
+    now = DateTime.utc(2026, 6, 21, 4, 16);
+    await tester.pump(const Duration(minutes: 1));
+
+    expect(find.text('Elapsed'), findsOneWidget);
+    expect(find.text('1m'), findsOneWidget);
+    expect(find.text('Remaining'), findsOneWidget);
+    expect(find.text('15h 59m'), findsOneWidget);
+  });
+
+  testWidgets('starts a Fasting Session from the corrected start time', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: LocalFastingStatusSection(
+            nowUtc: () => DateTime.utc(2026, 6, 21, 4, 15),
+            selectStartTime: (_, _) async => DateTime.utc(2026, 6, 21, 0, 15),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('Edit'));
+    await tester.pump();
+    await tester.tap(find.text('Start 16h Fasting Session'));
+    await tester.pump();
+
+    expect(find.byType(ActiveFastingStatus), findsOneWidget);
+    expect(find.text('Elapsed'), findsOneWidget);
+    expect(find.text('4h 0m'), findsOneWidget);
+    expect(find.text('Remaining'), findsOneWidget);
+    expect(find.text('12h 0m'), findsOneWidget);
+  });
+
+  testWidgets('does not start from a future corrected start time', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: LocalFastingStatusSection(
+            nowUtc: () => DateTime.utc(2026, 6, 21, 4, 15),
+            selectStartTime: (_, _) async => DateTime.utc(2026, 6, 21, 4, 16),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('Edit'));
+    await tester.pump();
+    await tester.tap(find.text('Start 16h Fasting Session'));
+    await tester.pump();
+
+    expect(find.byType(ActiveFastingStatus), findsNothing);
+    expect(find.text('Not Fasting'), findsOneWidget);
+    expect(find.text('Start time cannot be in the future'), findsOneWidget);
+  });
+
+  testWidgets('returns to Not Fasting when the active Fasting Session ends', (
+    tester,
+  ) async {
+    var now = DateTime.utc(2026, 6, 21, 4, 15);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: LocalFastingStatusSection(
+            nowUtc: () => now,
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('Start 16h Fasting Session'));
+    await tester.pump();
+
+    now = DateTime.utc(2026, 6, 21, 4, 16);
+    await tester.tap(find.text('End Fasting Session'));
+    await tester.pump();
+
+    expect(find.text('Not Fasting'), findsOneWidget);
+    expect(find.byType(ActiveFastingStatus), findsNothing);
+    expect(find.byType(FastingPlanSelector), findsOneWidget);
+    expect(find.byType(StartFastButton), findsOneWidget);
+  });
+
+  testWidgets('records an ended Fasting Session through FastingTracker', (
+    tester,
+  ) async {
+    var now = DateTime.utc(2026, 6, 21, 4, 15);
+    final tracker = FastingTracker(nowUtc: () => now);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: LocalFastingStatusSection(
+            nowUtc: () => now,
+            tracker: tracker,
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('Start 16h Fasting Session'));
+    await tester.pump();
+
+    now = DateTime.utc(2026, 6, 21, 5, 15);
+    await tester.tap(find.text('End Fasting Session'));
+    await tester.pump();
+
+    expect(tracker.activeSession, isNull);
+    expect(tracker.latestSession?.actualEndTime, now);
+    expect(tracker.latestSession?.actualDuration, const Duration(hours: 1));
+    expect(tracker.latestSession?.result, FastingResult.endedEarly);
+  });
+}

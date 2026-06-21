@@ -1,0 +1,984 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Fasting Status Prototype</title>
+    <style>
+      :root {
+        --bg: oklch(1 0 0);
+        --surface: #fff8f4;
+        --surface-raised: #ffffff;
+        --ink: #201b13;
+        --muted: #4f4539;
+        --primary: #7f5610;
+        --primary-soft: #ffddb3;
+        --accent: #516440;
+        --line: #d3c4b4;
+        --shadow-sheet: 0 12px 28px rgb(15 23 42 / 0.12);
+        --ease: cubic-bezier(0.22, 1, 0.36, 1);
+        color-scheme: light;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+          sans-serif;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background:
+          radial-gradient(circle at 18% 12%, oklch(0.94 0.028 230), transparent 28rem),
+          linear-gradient(180deg, var(--bg), var(--surface));
+        color: var(--ink);
+      }
+
+      button {
+        font: inherit;
+      }
+
+      .prototype-note {
+        max-width: 980px;
+        margin: 0 auto;
+        padding: 24px 20px 0;
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.4;
+      }
+
+      .stage {
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        padding: 24px 16px 96px;
+      }
+
+      .phone {
+        width: min(100%, 390px);
+        min-height: 780px;
+        background: var(--bg);
+        border: 1px solid var(--line);
+        border-radius: 34px;
+        overflow: hidden;
+        box-shadow: var(--shadow-sheet);
+        position: relative;
+      }
+
+      .screen {
+        min-height: 780px;
+        padding: 22px 20px 24px;
+      }
+
+      .topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 22px;
+      }
+
+      .avatar {
+        width: 42px;
+        height: 42px;
+        border-radius: 999px;
+        display: grid;
+        place-items: center;
+        background: var(--primary-soft);
+        color: var(--primary);
+        font-weight: 700;
+      }
+
+      .icon-button {
+        width: 42px;
+        height: 42px;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        background: var(--surface-raised);
+        color: var(--ink);
+      }
+
+      .eyebrow {
+        margin: 0 0 4px;
+        font-size: 13px;
+        color: var(--muted);
+        font-weight: 600;
+      }
+
+      h1,
+      h2,
+      h3,
+      p {
+        margin-top: 0;
+      }
+
+      h1 {
+        margin-bottom: 8px;
+        font-size: 32px;
+        line-height: 1.08;
+        letter-spacing: 0;
+      }
+
+      h2 {
+        font-size: 22px;
+        line-height: 1.18;
+        letter-spacing: 0;
+      }
+
+      h3 {
+        font-size: 17px;
+        line-height: 1.2;
+      }
+
+      .subtle {
+        color: var(--muted);
+        font-size: 15px;
+        line-height: 1.45;
+      }
+
+      .chip-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      .chip {
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        background: var(--surface-raised);
+        color: var(--ink);
+        padding: 8px 11px;
+        font-size: 13px;
+        font-weight: 650;
+      }
+
+      .chip.is-selected {
+        border-color: transparent;
+        background: var(--primary);
+        color: var(--bg);
+      }
+
+      .primary-button,
+      .secondary-button {
+        border: 0;
+        border-radius: 14px;
+        padding: 14px 18px;
+        min-height: 52px;
+        font-weight: 700;
+        transition:
+          transform 180ms var(--ease),
+          background 180ms var(--ease);
+      }
+
+      .primary-button {
+        background: var(--primary);
+        color: var(--bg);
+      }
+
+      .secondary-button {
+        background: var(--primary-soft);
+        color: var(--ink);
+      }
+
+      .primary-button:active,
+      .secondary-button:active {
+        transform: translateY(1px);
+      }
+
+      .card {
+        background: var(--surface-raised);
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        padding: 18px;
+      }
+
+      .soft-card {
+        background: var(--surface);
+        border-radius: 22px;
+        padding: 18px;
+      }
+
+      .row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+      }
+
+      .metric {
+        display: grid;
+        gap: 3px;
+      }
+
+      .metric strong {
+        font-size: 18px;
+      }
+
+      .metric span {
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .progress-ring {
+        --progress: 67%;
+        width: 230px;
+        aspect-ratio: 1;
+        border-radius: 999px;
+        margin: 30px auto 24px;
+        display: grid;
+        place-items: center;
+        background: conic-gradient(
+          var(--primary) var(--progress),
+          var(--primary-soft) 0
+        );
+        position: relative;
+      }
+
+      .progress-ring::after {
+        content: "";
+        position: absolute;
+        inset: 14px;
+        border-radius: inherit;
+        background: var(--bg);
+      }
+
+      .ring-copy {
+        position: relative;
+        z-index: 1;
+        text-align: center;
+      }
+
+      .ring-copy strong {
+        display: block;
+        font-size: 46px;
+        line-height: 1;
+        letter-spacing: 0;
+      }
+
+      .ring-copy span {
+        color: var(--muted);
+        font-weight: 650;
+      }
+
+      .bottom-actions {
+        position: absolute;
+        left: 20px;
+        right: 20px;
+        bottom: 22px;
+        display: grid;
+        gap: 10px;
+      }
+
+      .ready-only {
+        display: none !important;
+      }
+
+      body[data-session-state="ready"] .ready-only {
+        display: block !important;
+      }
+
+      body[data-session-state="ready"] .ready-only.bottom-actions,
+      body[data-session-state="ready"] .ready-only.time-grid {
+        display: grid !important;
+      }
+
+      body[data-session-state="ready"] .ready-only.row,
+      body[data-session-state="ready"] .ready-only.card.row {
+        display: flex !important;
+      }
+
+      body[data-session-state="ready"] .fasting-only {
+        display: none !important;
+      }
+
+      .variant-a .plan-panel {
+        margin-top: 22px;
+        display: grid;
+        gap: 14px;
+      }
+
+      .variant-b {
+        background: var(--surface);
+      }
+
+      .variant-b .hero {
+        background: var(--bg);
+        border-radius: 28px;
+        padding: 22px;
+        margin-bottom: 16px;
+      }
+
+      .timeline {
+        display: grid;
+        gap: 10px;
+        margin-top: 14px;
+      }
+
+      .timeline-item {
+        display: grid;
+        grid-template-columns: 48px 1fr;
+        gap: 12px;
+        align-items: start;
+      }
+
+      .time-dot {
+        width: 48px;
+        height: 48px;
+        border-radius: 16px;
+        background: var(--primary-soft);
+        display: grid;
+        place-items: center;
+        color: var(--primary);
+        font-weight: 800;
+      }
+
+      .member-list {
+        display: grid;
+        gap: 10px;
+        margin-top: 16px;
+      }
+
+      .member {
+        display: grid;
+        grid-template-columns: 42px 1fr auto;
+        gap: 12px;
+        align-items: center;
+        padding: 12px;
+        border-radius: 18px;
+        background: var(--bg);
+      }
+
+      .status-pill {
+        border-radius: 999px;
+        background: var(--primary-soft);
+        color: var(--primary);
+        padding: 6px 9px;
+        font-size: 12px;
+        font-weight: 750;
+      }
+
+      .variant-c .ledger-header {
+        margin-bottom: 24px;
+      }
+
+      .time-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+      }
+
+      .time-block {
+        min-height: 116px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+      }
+
+      .time-block strong {
+        font-size: 26px;
+        line-height: 1;
+      }
+
+      .session-strip {
+        margin: 24px 0;
+        padding: 18px;
+        border-radius: 22px;
+        background: linear-gradient(135deg, var(--primary-soft), var(--surface));
+      }
+
+      .bar {
+        height: 10px;
+        border-radius: 999px;
+        background: var(--bg);
+        overflow: hidden;
+      }
+
+      .bar span {
+        display: block;
+        height: 100%;
+        width: 67%;
+        border-radius: inherit;
+        background: var(--primary);
+      }
+
+      .prototype-switcher {
+        position: fixed;
+        left: 50%;
+        bottom: 18px;
+        transform: translateX(-50%);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px;
+        border-radius: 999px;
+        background: var(--ink);
+        color: var(--bg);
+        box-shadow: var(--shadow-sheet);
+        z-index: 10;
+      }
+
+      .prototype-switcher button {
+        width: 36px;
+        height: 36px;
+        border: 0;
+        border-radius: 999px;
+        background: rgb(255 255 255 / 0.12);
+        color: var(--bg);
+      }
+
+      .prototype-switcher span {
+        min-width: 148px;
+        text-align: center;
+        font-size: 13px;
+        font-weight: 750;
+      }
+
+      .palette-switcher {
+        position: fixed;
+        top: 18px;
+        right: 18px;
+        display: flex;
+        gap: 6px;
+        padding: 6px;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        background: color-mix(in oklab, var(--surface-raised), transparent 4%);
+        box-shadow: 0 8px 18px rgb(32 27 19 / 0.1);
+        z-index: 10;
+      }
+
+      .state-switcher {
+        position: fixed;
+        top: 18px;
+        left: 18px;
+        display: flex;
+        gap: 6px;
+        padding: 6px;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        background: color-mix(in oklab, var(--surface-raised), transparent 4%);
+        box-shadow: 0 8px 18px rgb(32 27 19 / 0.1);
+        z-index: 10;
+      }
+
+      .palette-switcher button,
+      .state-switcher button {
+        border: 0;
+        border-radius: 999px;
+        padding: 8px 10px;
+        background: transparent;
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 750;
+      }
+
+      .palette-switcher button[aria-pressed="true"],
+      .state-switcher button[aria-pressed="true"] {
+        background: var(--primary);
+        color: var(--bg);
+      }
+
+      [data-variant] {
+        display: none;
+      }
+
+      [data-variant].is-active {
+        display: block;
+      }
+
+      @media (max-width: 460px) {
+        .stage {
+          padding: 0 0 86px;
+          display: block;
+        }
+
+        .prototype-note {
+          display: none;
+        }
+
+        .phone {
+          width: 100%;
+          min-height: 100vh;
+          border: 0;
+          border-radius: 0;
+          box-shadow: none;
+        }
+
+        .palette-switcher {
+          top: auto;
+          right: 50%;
+          bottom: 72px;
+          transform: translateX(50%);
+        }
+
+        .state-switcher {
+          left: 50%;
+          top: 12px;
+          transform: translateX(-50%);
+        }
+
+        .screen {
+          min-height: 100vh;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          transition-duration: 1ms !important;
+          scroll-behavior: auto !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <p class="prototype-note">
+      Throwaway prototype. Use the bottom switcher or left/right arrow keys to
+      compare directions. Each variant uses the same sample fasting state.
+    </p>
+
+    <main class="stage">
+      <article class="phone" data-variant="A">
+        <section class="screen variant-a">
+          <header class="topbar">
+            <div>
+              <p class="eyebrow">Personal fasting</p>
+              <h1>Quiet Timer</h1>
+            </div>
+            <button class="icon-button" aria-label="Settings">...</button>
+          </header>
+
+          <section class="ready-only soft-card">
+            <p class="eyebrow">Not Fasting</p>
+            <h2>Choose your Fasting Plan.</h2>
+            <p class="subtle">
+              Start now, or record that your Fasting Session began earlier today.
+            </p>
+            <div class="chip-row" aria-label="Fasting plan choices">
+              <button class="chip">10h</button>
+              <button class="chip">12h</button>
+              <button class="chip">14h</button>
+              <button class="chip is-selected">16h</button>
+              <button class="chip">18h</button>
+              <button class="chip">24h</button>
+              <button class="chip">48h</button>
+            </div>
+          </section>
+
+          <section class="ready-only card row" style="margin-top: 14px">
+            <div class="metric">
+              <strong>Start time</strong>
+              <span>Today, 8:00 AM</span>
+            </div>
+            <button class="secondary-button" style="min-height: 42px; padding: 10px 12px">
+              Edit
+            </button>
+          </section>
+
+          <div
+            class="progress-ring fasting-only"
+            aria-label="10 hours and 42 minutes fasted"
+          >
+            <div class="ring-copy">
+              <strong>10:42</strong>
+              <span>fasting</span>
+            </div>
+          </div>
+
+          <section class="card row fasting-only">
+            <div class="metric">
+              <strong>5:18 left</strong>
+              <span>until target end</span>
+            </div>
+            <span class="status-pill">16h plan</span>
+          </section>
+
+          <section class="plan-panel soft-card fasting-only">
+            <div>
+              <h3>Start a new session</h3>
+              <p class="subtle">Choose a Fasting Plan. You can adjust the start time before it begins.</p>
+            </div>
+            <div class="chip-row" aria-label="Fasting plan choices">
+              <button class="chip">10h</button>
+              <button class="chip">12h</button>
+              <button class="chip">14h</button>
+              <button class="chip is-selected">16h</button>
+              <button class="chip">18h</button>
+              <button class="chip">24h</button>
+            </div>
+          </section>
+
+          <div class="bottom-actions fasting-only">
+            <button class="primary-button">End Fasting Session</button>
+            <button class="secondary-button">Adjust start time</button>
+          </div>
+
+          <div class="bottom-actions ready-only">
+            <button class="primary-button">Start Fasting Session</button>
+            <button class="secondary-button">Use current time</button>
+          </div>
+        </section>
+      </article>
+
+      <article class="phone" data-variant="B">
+        <section class="screen variant-b">
+          <header class="topbar">
+            <div class="avatar" aria-hidden="true">M</div>
+            <div style="flex: 1">
+              <p class="eyebrow">Circle visibility</p>
+              <h1>Partner Check-In</h1>
+            </div>
+            <button class="icon-button" aria-label="Notifications">.</button>
+          </header>
+
+          <section class="hero ready-only">
+            <p class="eyebrow">Not Fasting</p>
+            <h2>Start when you are ready. Nothing is shared yet.</h2>
+            <p class="subtle">
+              When you start, Circle Members will see your current Fasting Status,
+              start time, target end time, elapsed time, and remaining time.
+            </p>
+            <div class="chip-row" aria-label="Fasting plan choices">
+              <button class="chip">10h</button>
+              <button class="chip">12h</button>
+              <button class="chip is-selected">16h</button>
+              <button class="chip">18h</button>
+              <button class="chip">24h</button>
+            </div>
+          </section>
+
+          <section class="soft-card ready-only">
+            <div class="row">
+              <h3>Family Circle</h3>
+              <span class="status-pill">Private group</span>
+            </div>
+            <div class="member-list">
+              <div class="member">
+                <div class="avatar">A</div>
+                <div>
+                  <strong>Aisha</strong>
+                  <p class="subtle">Fasting, 2:10 left</p>
+                </div>
+                <span class="status-pill">Fasting</span>
+              </div>
+              <div class="member">
+                <div class="avatar">Y</div>
+                <div>
+                  <strong>You</strong>
+                  <p class="subtle">Not Fasting</p>
+                </div>
+                <span class="status-pill">Resting</span>
+              </div>
+            </div>
+          </section>
+
+          <section class="hero fasting-only">
+            <p class="eyebrow">You are fasting</p>
+            <h2>Started at 8:00 AM. Target is midnight.</h2>
+            <p class="subtle">Shared with Family Circle while you remain a Circle Member.</p>
+            <div class="timeline">
+              <div class="timeline-item">
+                <div class="time-dot">8a</div>
+                <div>
+                  <strong>Started</strong>
+                  <p class="subtle">You set this as the actual start time.</p>
+                </div>
+              </div>
+              <div class="timeline-item">
+                <div class="time-dot">12a</div>
+                <div>
+                  <strong>Target end</strong>
+                  <p class="subtle">The session continues until you end it.</p>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="soft-card fasting-only">
+            <div class="row">
+              <h3>Family Circle</h3>
+              <span class="status-pill">Private group</span>
+            </div>
+            <div class="member-list">
+              <div class="member">
+                <div class="avatar">A</div>
+                <div>
+                  <strong>Aisha</strong>
+                  <p class="subtle">Fasting, 2:10 left</p>
+                </div>
+                <span class="status-pill">Fasting</span>
+              </div>
+              <div class="member">
+                <div class="avatar">Y</div>
+                <div>
+                  <strong>You</strong>
+                  <p class="subtle">Fasting, 5:18 left</p>
+                </div>
+                <span class="status-pill">Fasting</span>
+              </div>
+              <div class="member">
+                <div class="avatar">N</div>
+                <div>
+                  <strong>Nadia</strong>
+                  <p class="subtle">Not Fasting</p>
+                </div>
+                <span class="status-pill">Resting</span>
+              </div>
+            </div>
+          </section>
+
+          <div class="bottom-actions fasting-only">
+            <button class="primary-button">End Fasting Session</button>
+          </div>
+
+          <div class="bottom-actions ready-only">
+            <button class="primary-button">Start 16h Fasting Session</button>
+            <button class="secondary-button">Set earlier start time</button>
+          </div>
+        </section>
+      </article>
+
+      <article class="phone" data-variant="C">
+        <section class="screen variant-c">
+          <header class="topbar ledger-header">
+            <div>
+              <p class="eyebrow">Today</p>
+              <h1>Time Ledger</h1>
+              <p class="subtle">A clear account of the current Fasting Session.</p>
+            </div>
+            <div class="avatar">Y</div>
+          </header>
+
+          <section class="time-grid ready-only">
+            <div class="card time-block">
+              <span class="subtle">Status</span>
+              <strong>Ready</strong>
+            </div>
+            <div class="card time-block">
+              <span class="subtle">Plan</span>
+              <strong>16h</strong>
+            </div>
+            <div class="card time-block">
+              <span class="subtle">Start</span>
+              <strong>8:00</strong>
+            </div>
+            <div class="card time-block">
+              <span class="subtle">Target</span>
+              <strong>12:00</strong>
+            </div>
+          </section>
+
+          <section class="session-strip ready-only">
+            <div class="row">
+              <div>
+                <strong>Select a Fasting Plan</strong>
+                <p class="subtle">Whole-hour plans keep the choice simple.</p>
+              </div>
+              <span class="status-pill">Before start</span>
+            </div>
+            <div class="chip-row" aria-label="Fasting plan choices">
+              <button class="chip">10h</button>
+              <button class="chip">12h</button>
+              <button class="chip">14h</button>
+              <button class="chip is-selected">16h</button>
+              <button class="chip">18h</button>
+              <button class="chip">24h</button>
+            </div>
+          </section>
+
+          <section class="soft-card ready-only">
+            <h3>Start time can be corrected</h3>
+            <p class="subtle">
+              If you already began earlier, set the actual start time before starting.
+            </p>
+          </section>
+
+          <section class="time-grid fasting-only">
+            <div class="card time-block">
+              <span class="subtle">Elapsed</span>
+              <strong>10h 42m</strong>
+            </div>
+            <div class="card time-block">
+              <span class="subtle">Remaining</span>
+              <strong>5h 18m</strong>
+            </div>
+            <div class="card time-block">
+              <span class="subtle">Started</span>
+              <strong>8:00</strong>
+            </div>
+            <div class="card time-block">
+              <span class="subtle">Target</span>
+              <strong>12:00</strong>
+            </div>
+          </section>
+
+          <section class="session-strip fasting-only">
+            <div class="row">
+              <div>
+                <strong>16 hour Fasting Plan</strong>
+                <p class="subtle">Session stays active until you end it.</p>
+              </div>
+              <span class="status-pill">67%</span>
+            </div>
+            <div class="bar" aria-hidden="true"><span></span></div>
+          </section>
+
+          <section class="soft-card fasting-only">
+            <h3>Correction-friendly</h3>
+            <p class="subtle">
+              When you end the session, you can choose the actual end time if it happened earlier.
+            </p>
+          </section>
+
+          <div class="bottom-actions fasting-only">
+            <button class="primary-button">End Fasting Session</button>
+            <button class="secondary-button">Change Fasting Plan</button>
+          </div>
+
+          <div class="bottom-actions ready-only">
+            <button class="primary-button">Start Fasting Session</button>
+            <button class="secondary-button">Edit start time</button>
+          </div>
+        </section>
+      </article>
+    </main>
+
+    <nav class="prototype-switcher" aria-label="Prototype variants">
+      <button type="button" data-prev aria-label="Previous variant">‹</button>
+      <span data-label></span>
+      <button type="button" data-next aria-label="Next variant">›</button>
+    </nav>
+
+    <nav class="palette-switcher" aria-label="Prototype palettes">
+      <button type="button" data-palette="amber">Amber</button>
+      <button type="button" data-palette="natural">Natural</button>
+      <button type="button" data-palette="cobalt">Cobalt</button>
+    </nav>
+
+    <nav class="state-switcher" aria-label="Session state">
+      <button type="button" data-state="ready">Ready</button>
+      <button type="button" data-state="fasting">Fasting</button>
+    </nav>
+
+    <script>
+      const variants = [
+        ["A", "Quiet Timer"],
+        ["B", "Partner Check-In"],
+        ["C", "Time Ledger"],
+      ];
+
+      const params = new URLSearchParams(window.location.search);
+      const requested = params.get("variant") || "A";
+      let index = Math.max(0, variants.findIndex(([key]) => key === requested));
+      const palettes = {
+        amber: {
+          bg: "#fff8f4",
+          surface: "#f9ecdf",
+          surfaceRaised: "#ffffff",
+          ink: "#201b13",
+          muted: "#4f4539",
+          primary: "#7f5610",
+          primarySoft: "#ffddb3",
+          accent: "#516440",
+          line: "#d3c4b4",
+        },
+        natural: {
+          bg: "#fffaf1",
+          surface: "#f3efe3",
+          surfaceRaised: "#fffdf7",
+          ink: "#1f1d16",
+          muted: "#4d4939",
+          primary: "#5f5a42",
+          primarySoft: "#e4dfc4",
+          accent: "#8a5a3c",
+          line: "#d0c8ad",
+        },
+        cobalt: {
+          bg: "oklch(1 0 0)",
+          surface: "oklch(0.965 0.006 230)",
+          surfaceRaised: "oklch(0.985 0.003 230)",
+          ink: "oklch(0.22 0.025 235)",
+          muted: "oklch(0.43 0.018 235)",
+          primary: "oklch(0.47 0.085 230)",
+          primarySoft: "oklch(0.9 0.035 230)",
+          accent: "oklch(0.62 0.105 28)",
+          line: "oklch(0.9 0.008 230)",
+        },
+      };
+      let paletteKey = palettes[params.get("palette")] ? params.get("palette") : "amber";
+      let sessionState = params.get("state") === "fasting" ? "fasting" : "ready";
+
+      function applyPalette() {
+        const palette = palettes[paletteKey];
+        const root = document.documentElement;
+        root.style.setProperty("--bg", palette.bg);
+        root.style.setProperty("--surface", palette.surface);
+        root.style.setProperty("--surface-raised", palette.surfaceRaised);
+        root.style.setProperty("--ink", palette.ink);
+        root.style.setProperty("--muted", palette.muted);
+        root.style.setProperty("--primary", palette.primary);
+        root.style.setProperty("--primary-soft", palette.primarySoft);
+        root.style.setProperty("--accent", palette.accent);
+        root.style.setProperty("--line", palette.line);
+        document.querySelectorAll("[data-palette]").forEach((button) => {
+          button.setAttribute(
+            "aria-pressed",
+            String(button.dataset.palette === paletteKey),
+          );
+        });
+      }
+
+      function render() {
+        const [key, name] = variants[index];
+        document.body.dataset.sessionState = sessionState;
+        document.querySelectorAll("[data-variant]").forEach((node) => {
+          node.classList.toggle("is-active", node.dataset.variant === key);
+        });
+        document.querySelectorAll("[data-state]").forEach((button) => {
+          button.setAttribute(
+            "aria-pressed",
+            String(button.dataset.state === sessionState),
+          );
+        });
+        document.querySelector("[data-label]").textContent = `${key} — ${name}`;
+        const url = new URL(window.location.href);
+        url.searchParams.set("variant", key);
+        url.searchParams.set("palette", paletteKey);
+        url.searchParams.set("state", sessionState);
+        window.history.replaceState({}, "", url);
+      }
+
+      function move(delta) {
+        index = (index + delta + variants.length) % variants.length;
+        render();
+      }
+
+      document.querySelector("[data-prev]").addEventListener("click", () => move(-1));
+      document.querySelector("[data-next]").addEventListener("click", () => move(1));
+      document.querySelectorAll("[data-palette]").forEach((button) => {
+        button.addEventListener("click", () => {
+          paletteKey = button.dataset.palette;
+          applyPalette();
+          render();
+        });
+      });
+      document.querySelectorAll("[data-state]").forEach((button) => {
+        button.addEventListener("click", () => {
+          sessionState = button.dataset.state;
+          render();
+        });
+      });
+      window.addEventListener("keydown", (event) => {
+        const tagName = event.target?.tagName;
+        if (["INPUT", "TEXTAREA", "SELECT"].includes(tagName)) return;
+        if (event.key === "ArrowLeft") move(-1);
+        if (event.key === "ArrowRight") move(1);
+      });
+
+      applyPalette();
+      render();
+    </script>
+  </body>
+</html>

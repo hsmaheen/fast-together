@@ -37,6 +37,22 @@ Scope: Process
 Status: Accepted
 Links: `docs/adr/`, `CONTEXT.md`, `docs/MVP.md`
 
+## 2026-06-21 - Visualize UI with disposable HTML prototypes before Flutter implementation
+
+Decision: We will use Impeccable to shape UI work and create small disposable HTML/CSS prototypes for important screens before building the production Flutter version.
+Reason: HTML prototypes let us compare layout, hierarchy, color, copy, and motion directions quickly without committing production Flutter code too early. After a direction is chosen, the production Flutter implementation still follows the repo's strict TDD process.
+Scope: Process
+Status: Accepted
+Links: `PRODUCT.md` and `DESIGN.md` once created
+
+## 2026-06-21 - Use a warm natural premium color direction
+
+Decision: We will steer the visual design toward warm, welcoming, intimate, soft, premium, autumnal, and natural colors.
+Reason: This better matches the desired emotional tone than the earlier cool cobalt exploration. Warmth should still be restrained and intentional, avoiding clinical health UI, gamified color, overly colorful surfaces, and generic beige wellness branding.
+Scope: Product
+Status: Accepted
+Links: `PRODUCT.md`, `DESIGN.md`, `/Users/maheen/Downloads/material-theme.json`, `/Users/maheen/Downloads/materialkolor-theme.zip`
+
 ## ADR Index
 
 - `0001` - Model circle membership separately
