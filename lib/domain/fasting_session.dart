@@ -11,6 +11,14 @@ class FastingSession {
     _requireUtc(startTime, 'startTime');
     _requireUtc(targetEndTime, 'targetEndTime');
     _requireUtc(actualEndTime, 'actualEndTime');
+    if (!targetEndTime.isAfter(startTime)) {
+      throw ArgumentError.value(
+        targetEndTime,
+        'targetEndTime',
+        'must be after startTime',
+      );
+    }
+
     if (actualEndTime != null && !actualEndTime.isAfter(startTime)) {
       throw ArgumentError.value(
         actualEndTime,
@@ -71,6 +79,10 @@ class FastingSession {
   }
 
   FastingSession end({required DateTime actualEndTime}) {
+    if (!isActive) {
+      throw StateError('Cannot end an already ended Fasting Session');
+    }
+
     return FastingSession(
       startTime: startTime,
       targetEndTime: targetEndTime,
@@ -90,11 +102,20 @@ class FastingSession {
     );
   }
 
-  Duration elapsedAt(DateTime time) => time.difference(startTime);
+  Duration elapsedAt(DateTime time) {
+    _requireUtc(time, 'time');
+    return time.difference(startTime);
+  }
 
-  Duration remainingAt(DateTime time) => targetEndTime.difference(time);
+  Duration remainingAt(DateTime time) {
+    _requireUtc(time, 'time');
+    return targetEndTime.difference(time);
+  }
 
-  Duration overTargetAt(DateTime time) => time.difference(targetEndTime);
+  Duration overTargetAt(DateTime time) {
+    _requireUtc(time, 'time');
+    return time.difference(targetEndTime);
+  }
 }
 
 void _requireUtc(DateTime? time, String name) {

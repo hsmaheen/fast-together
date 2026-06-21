@@ -54,3 +54,4 @@ Links: `docs/adr/`, `CONTEXT.md`, `docs/MVP.md`
 - `0013` - Use lightweight Domain-Driven Design
 - `0014` - Use UTC timestamps
 - `0015` - Use earned Flutter layers
+- `0016` - Use application clock for Fasting Session action time validation

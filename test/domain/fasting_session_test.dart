@@ -268,6 +268,19 @@ void main() {
       );
     });
 
+    test('does not end an already ended Fasting Session', () {
+      final endedSession = FastingSession(
+        startTime: DateTime.utc(2026, 6, 20, 8),
+        targetEndTime: DateTime.utc(2026, 6, 21),
+        actualEndTime: DateTime.utc(2026, 6, 21, 1),
+      );
+
+      expect(
+        () => endedSession.end(actualEndTime: DateTime.utc(2026, 6, 21, 2)),
+        throwsStateError,
+      );
+    });
+
     test('rejects a non-UTC start time', () {
       expect(
         () => FastingSession(
@@ -283,6 +296,25 @@ void main() {
         () => FastingSession(
           startTime: DateTime.utc(2026, 6, 20, 8),
           targetEndTime: DateTime(2026, 6, 21),
+        ),
+        throwsArgumentError,
+      );
+    });
+
+    test('rejects a target end time equal to the start time', () {
+      final startTime = DateTime.utc(2026, 6, 20, 8);
+
+      expect(
+        () => FastingSession(startTime: startTime, targetEndTime: startTime),
+        throwsArgumentError,
+      );
+    });
+
+    test('rejects a target end time before the start time', () {
+      expect(
+        () => FastingSession(
+          startTime: DateTime.utc(2026, 6, 20, 8),
+          targetEndTime: DateTime.utc(2026, 6, 20, 7, 59),
         ),
         throwsArgumentError,
       );
@@ -321,6 +353,18 @@ void main() {
       );
     });
 
+    test('does not report elapsed duration for a non-UTC time', () {
+      final session = FastingSession(
+        startTime: DateTime.utc(2026, 6, 20, 8),
+        targetEndTime: DateTime.utc(2026, 6, 21),
+      );
+
+      expect(
+        () => session.elapsedAt(DateTime(2026, 6, 20, 13, 30)),
+        throwsArgumentError,
+      );
+    });
+
     test('reports remaining duration before the target end time', () {
       final session = FastingSession(
         startTime: DateTime.utc(2026, 6, 20, 8),
@@ -333,6 +377,18 @@ void main() {
       );
     });
 
+    test('does not report remaining duration for a non-UTC time', () {
+      final session = FastingSession(
+        startTime: DateTime.utc(2026, 6, 20, 8),
+        targetEndTime: DateTime.utc(2026, 6, 21),
+      );
+
+      expect(
+        () => session.remainingAt(DateTime(2026, 6, 20, 20, 15)),
+        throwsArgumentError,
+      );
+    });
+
     test('reports over-target duration after the target end time', () {
       final session = FastingSession(
         startTime: DateTime.utc(2026, 6, 20, 8),
@@ -342,6 +398,18 @@ void main() {
       expect(
         session.overTargetAt(DateTime.utc(2026, 6, 21, 1, 20)),
         const Duration(hours: 1, minutes: 20),
+      );
+    });
+
+    test('does not report over-target duration for a non-UTC time', () {
+      final session = FastingSession(
+        startTime: DateTime.utc(2026, 6, 20, 8),
+        targetEndTime: DateTime.utc(2026, 6, 21),
+      );
+
+      expect(
+        () => session.overTargetAt(DateTime(2026, 6, 21, 1, 20)),
+        throwsArgumentError,
       );
     });
 
