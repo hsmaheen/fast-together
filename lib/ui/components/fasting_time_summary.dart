@@ -89,15 +89,21 @@ class _SummaryRow extends StatelessWidget {
     final theme = Theme.of(context);
 
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          label,
-          style: theme.textTheme.labelLarge,
+        Expanded(
+          child: Text(
+            label,
+            style: theme.textTheme.labelLarge,
+          ),
         ),
-        Text(
-          value,
-          style: theme.textTheme.bodyMedium,
+        const SizedBox(width: 12),
+        Flexible(
+          child: Text(
+            value,
+            textAlign: TextAlign.end,
+            style: theme.textTheme.bodyMedium,
+          ),
         ),
       ],
     );

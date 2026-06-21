@@ -31,26 +31,45 @@ class ActiveFastingStatus extends StatelessWidget {
           style: Theme.of(context).textTheme.titleLarge,
         ),
         const SizedBox(height: 16),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            FastingProgressRing(
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final textScale = MediaQuery.textScalerOf(context).scale(16) / 16;
+            final shouldStack = constraints.maxWidth < 360 || textScale > 1.3;
+            final progressRing = FastingProgressRing(
               progress: elapsed.inMinutes / targetDuration.inMinutes,
               isOverTarget: isOverTarget,
-            ),
-            const SizedBox(width: 20),
-            Expanded(
-              child: FastingTimeSummary(
-                startTime: session.startTime,
-                targetEndTime: session.targetEndTime,
-                elapsed: elapsed,
-                remaining: isOverTarget ? null : remaining,
-                overTarget: isOverTarget
-                    ? session.overTargetAt(currentTime)
-                    : null,
-              ),
-            ),
-          ],
+            );
+            final timeSummary = FastingTimeSummary(
+              startTime: session.startTime,
+              targetEndTime: session.targetEndTime,
+              elapsed: elapsed,
+              remaining: isOverTarget ? null : remaining,
+              overTarget: isOverTarget
+                  ? session.overTargetAt(currentTime)
+                  : null,
+            );
+
+            if (shouldStack) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  progressRing,
+                  const SizedBox(height: 16),
+                  timeSummary,
+                ],
+              );
+            }
+
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                progressRing,
+                const SizedBox(width: 20),
+                Expanded(child: timeSummary),
+              ],
+            );
+          },
         ),
         const SizedBox(height: 20),
         FilledButton(

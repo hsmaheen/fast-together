@@ -6,19 +6,28 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   testWidgets('displays the selected start time', (tester) async {
+    final selectedStartTime = DateTime.utc(2026, 6, 21, 4, 15);
+
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
           body: StartTimeSelector(
-            selectedStartTime: DateTime.utc(2026, 6, 21, 4, 15),
+            selectedStartTime: selectedStartTime,
             onChanged: (_) {},
           ),
         ),
       ),
     );
 
+    final localizations = MaterialLocalizations.of(
+      tester.element(find.byType(StartTimeSelector)),
+    );
+    final expectedStartTime = localizations.formatTimeOfDay(
+      TimeOfDay.fromDateTime(selectedStartTime.toLocal()),
+    );
+
     expect(find.text('Start Time'), findsOneWidget);
-    expect(find.text('12:15 PM'), findsOneWidget);
+    expect(find.text(expectedStartTime), findsOneWidget);
     expect(find.text('Edit'), findsOneWidget);
   });
 

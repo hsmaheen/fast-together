@@ -110,4 +110,38 @@ void main() {
     expect(find.text('Over Target'), findsOneWidget);
     expect(find.text('1h 30m'), findsOneWidget);
   });
+
+  testWidgets('fits narrow screens with large text', (tester) async {
+    final session = FastingSession.start(
+      startTime: DateTime.utc(2026, 6, 21),
+      plan: FastingPlan.sixteenHours,
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: MediaQuery(
+          data: const MediaQueryData(
+            size: Size(240, 640),
+            textScaler: TextScaler.linear(2),
+          ),
+          child: Scaffold(
+            body: SingleChildScrollView(
+              child: SizedBox(
+                width: 240,
+                child: ActiveFastingStatus(
+                  session: session,
+                  currentTime: DateTime.utc(2026, 6, 21, 4, 15),
+                  onEndPressed: () {},
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(tester.takeException(), isNull);
+    expect(find.text('Fasting'), findsOneWidget);
+    expect(find.text('End Fasting Session'), findsOneWidget);
+  });
 }
