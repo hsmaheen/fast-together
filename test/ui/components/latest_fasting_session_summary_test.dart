@@ -25,6 +25,37 @@ void main() {
     expect(find.text('16h 0m'), findsOneWidget);
   });
 
+  testWidgets('emits corrected actual end time from edit action', (
+    tester,
+  ) async {
+    DateTime? changedActualEndTime;
+    final session = FastingSession.start(
+      startTime: DateTime.utc(2026, 6, 21, 4),
+      plan: FastingPlan.sixteenHours,
+    ).end(actualEndTime: DateTime.utc(2026, 6, 21, 5));
+    final correctedActualEndTime = DateTime.utc(2026, 6, 21, 6);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: LatestFastingSessionSummary(
+            session: session,
+            onActualEndTimeChanged: (value) {
+              changedActualEndTime = value;
+            },
+            selectActualEndTime: (_, _) async => correctedActualEndTime,
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('Edit'));
+    await tester.pump();
+
+    expect(changedActualEndTime, correctedActualEndTime);
+    expect(changedActualEndTime?.isUtc, isTrue);
+  });
+
   testWidgets('does not show active Fasting Session details', (tester) async {
     final session = FastingSession.start(
       startTime: DateTime.utc(2026, 6, 21, 4),

@@ -36,6 +36,7 @@ class _LocalFastingStatusSectionState extends State<LocalFastingStatusSection> {
   late final FastingTracker _tracker;
   late final Timer _statusTicker;
   String? _errorMessage;
+  String? _latestSessionErrorMessage;
 
   @override
   void initState() {
@@ -138,6 +139,7 @@ class _LocalFastingStatusSectionState extends State<LocalFastingStatusSection> {
                   plan: _selectedPlan,
                 );
                 _errorMessage = null;
+                _latestSessionErrorMessage = null;
                 _correctedActualEndTime = null;
               } on ArgumentError {
                 _errorMessage = 'Start time cannot be in the future';
@@ -147,7 +149,28 @@ class _LocalFastingStatusSectionState extends State<LocalFastingStatusSection> {
         ),
         if (latestSession != null && !latestSession.isActive) ...[
           const SizedBox(height: 20),
-          LatestFastingSessionSummary(session: latestSession),
+          LatestFastingSessionSummary(
+            session: latestSession,
+            onActualEndTimeChanged: (actualEndTime) {
+              setState(() {
+                if (!actualEndTime.isAfter(latestSession.startTime)) {
+                  _latestSessionErrorMessage =
+                      'Actual end time must be after the start time';
+                  return;
+                }
+
+                try {
+                  _tracker.correctActualEndTime(actualEndTime: actualEndTime);
+                  _latestSessionErrorMessage = null;
+                } on ArgumentError {
+                  _latestSessionErrorMessage =
+                      'Actual end time cannot be in the future';
+                }
+              });
+            },
+            errorMessage: _latestSessionErrorMessage,
+            selectActualEndTime: widget.selectActualEndTime,
+          ),
         ],
       ],
     );

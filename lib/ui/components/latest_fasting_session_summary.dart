@@ -1,10 +1,20 @@
 import 'package:fasting_app/domain/fasting_session.dart';
+import 'package:fasting_app/ui/components/actual_end_time_selector.dart';
 import 'package:flutter/material.dart';
 
 class LatestFastingSessionSummary extends StatelessWidget {
-  const LatestFastingSessionSummary({required this.session, super.key});
+  const LatestFastingSessionSummary({
+    required this.session,
+    this.onActualEndTimeChanged,
+    this.selectActualEndTime,
+    this.errorMessage,
+    super.key,
+  });
 
   final FastingSession session;
+  final ValueChanged<DateTime>? onActualEndTimeChanged;
+  final ActualEndTimePicker? selectActualEndTime;
+  final String? errorMessage;
 
   @override
   Widget build(BuildContext context) {
@@ -40,10 +50,26 @@ class LatestFastingSessionSummary extends StatelessWidget {
               value: _formatDuration(actualDuration),
             ),
             const SizedBox(height: 8),
-            _SummaryRow(
-              label: 'Actual End Time',
-              value: _formatDateAndTime(localizations, actualEndTime),
-            ),
+            if (onActualEndTimeChanged != null)
+              ActualEndTimeSelector(
+                selectedActualEndTime: actualEndTime,
+                onChanged: onActualEndTimeChanged!,
+                selectActualEndTime: selectActualEndTime,
+              )
+            else
+              _SummaryRow(
+                label: 'Actual End Time',
+                value: _formatDateAndTime(localizations, actualEndTime),
+              ),
+            if (errorMessage != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                errorMessage!,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.error,
+                ),
+              ),
+            ],
           ],
         ),
       ),
