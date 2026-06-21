@@ -2,6 +2,7 @@ import 'package:fasting_app/application/fasting_tracker.dart';
 import 'package:fasting_app/domain/fasting_session.dart';
 import 'package:fasting_app/ui/components/fasting_plan_selector.dart';
 import 'package:fasting_app/ui/components/active_fasting_status.dart';
+import 'package:fasting_app/ui/components/latest_fasting_session_summary.dart';
 import 'package:fasting_app/ui/components/local_fasting_status_section.dart';
 import 'package:fasting_app/ui/components/start_fast_button.dart';
 import 'package:fasting_app/ui/components/start_time_selector.dart';
@@ -176,6 +177,43 @@ void main() {
     expect(tracker.latestSession?.result, FastingResult.endedEarly);
   });
 
+  testWidgets('shows a latest ended Fasting Session summary after ending', (
+    tester,
+  ) async {
+    var now = DateTime.utc(2026, 6, 21, 4, 15);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(body: LocalFastingStatusSection(nowUtc: () => now)),
+      ),
+    );
+
+    await tester.tap(find.text('Start 16h Fasting Session'));
+    await tester.pump();
+
+    now = DateTime.utc(2026, 6, 21, 5, 45);
+    await tester.tap(find.text('End Fasting Session'));
+    await tester.pump();
+
+    final localizations = MaterialLocalizations.of(
+      tester.element(find.byType(LocalFastingStatusSection)),
+    );
+
+    expect(find.text('Not Fasting'), findsOneWidget);
+    expect(find.text('Latest Fasting Session'), findsOneWidget);
+    expect(find.text('Ended Early'), findsOneWidget);
+    expect(find.text('Actual Duration'), findsOneWidget);
+    expect(find.text('1h 30m'), findsOneWidget);
+    expect(find.text('Actual End Time'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byType(LatestFastingSessionSummary),
+        matching: find.text(_formatDateAndTime(localizations, now)),
+      ),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('ends a Fasting Session from the corrected actual end time', (
     tester,
   ) async {
@@ -281,4 +319,14 @@ void main() {
       findsOneWidget,
     );
   });
+}
+
+String _formatDateAndTime(MaterialLocalizations localizations, DateTime value) {
+  final localValue = value.toLocal();
+  final date = localizations.formatMediumDate(localValue);
+  final time = localizations.formatTimeOfDay(
+    TimeOfDay.fromDateTime(localValue),
+  );
+
+  return '$date $time';
 }

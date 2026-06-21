@@ -5,6 +5,7 @@ import 'package:fasting_app/domain/fasting_plan.dart';
 import 'package:fasting_app/ui/components/actual_end_time_selector.dart';
 import 'package:fasting_app/ui/components/active_fasting_status.dart';
 import 'package:fasting_app/ui/components/fasting_plan_selector.dart';
+import 'package:fasting_app/ui/components/latest_fasting_session_summary.dart';
 import 'package:fasting_app/ui/components/start_fast_button.dart';
 import 'package:fasting_app/ui/components/start_time_selector.dart';
 import 'package:flutter/material.dart';
@@ -56,6 +57,7 @@ class _LocalFastingStatusSectionState extends State<LocalFastingStatusSection> {
   @override
   Widget build(BuildContext context) {
     final activeSession = _tracker.activeSession;
+    final latestSession = _tracker.latestSession;
     _selectedStartTime ??= widget.nowUtc();
 
     if (activeSession != null) {
@@ -143,6 +145,10 @@ class _LocalFastingStatusSectionState extends State<LocalFastingStatusSection> {
             });
           },
         ),
+        if (latestSession != null && !latestSession.isActive) ...[
+          const SizedBox(height: 20),
+          LatestFastingSessionSummary(session: latestSession),
+        ],
       ],
     );
   }
