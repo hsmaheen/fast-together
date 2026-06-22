@@ -66,4 +66,89 @@ void main() {
 
     expect(changedPlan, same(FastingPlan.twentyFourHours));
   });
+
+  testWidgets('emits a custom Fasting Plan when Custom is tapped', (
+    tester,
+  ) async {
+    FastingPlan? changedPlan;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: FastingPlanSelector(
+            selectedPlan: FastingPlan.sixteenHours,
+            onChanged: (plan) {
+              changedPlan = plan;
+            },
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('Custom'));
+
+    expect(changedPlan?.duration, const Duration(hours: 20));
+  });
+
+  testWidgets('shows custom whole-hour input for a custom Fasting Plan', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: FastingPlanSelector(
+            selectedPlan: FastingPlan.customHours(20),
+            onChanged: (_) {},
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('Custom Hours'), findsOneWidget);
+    expect(find.widgetWithText(TextFormField, '20'), findsOneWidget);
+  });
+
+  testWidgets('emits custom whole-hour changes from the input', (tester) async {
+    FastingPlan? changedPlan;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: FastingPlanSelector(
+            selectedPlan: FastingPlan.customHours(20),
+            onChanged: (plan) {
+              changedPlan = plan;
+            },
+          ),
+        ),
+      ),
+    );
+
+    await tester.enterText(find.byType(TextFormField), '36');
+
+    expect(changedPlan?.duration, const Duration(hours: 36));
+  });
+
+  testWidgets('shows an error for out-of-range custom hours', (tester) async {
+    FastingPlan? changedPlan;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: FastingPlanSelector(
+            selectedPlan: FastingPlan.customHours(20),
+            onChanged: (plan) {
+              changedPlan = plan;
+            },
+          ),
+        ),
+      ),
+    );
+
+    await tester.enterText(find.byType(TextFormField), '169');
+    await tester.pump();
+
+    expect(changedPlan, isNull);
+    expect(find.text('Enter 1-168 hours'), findsOneWidget);
+  });
 }

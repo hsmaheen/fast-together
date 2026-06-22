@@ -53,6 +53,41 @@ void main() {
     expect(find.text('16h 0m'), findsOneWidget);
   });
 
+  testWidgets('starts a Fasting Session from a custom Fasting Plan', (
+    tester,
+  ) async {
+    final tracker = FastingTracker(
+      nowUtc: () => DateTime.utc(2026, 6, 21, 4, 15),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: LocalFastingStatusSection(
+            nowUtc: () => DateTime.utc(2026, 6, 21, 4, 15),
+            tracker: tracker,
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('Custom'));
+    await tester.pump();
+    await tester.enterText(find.byType(TextFormField), '36');
+    await tester.pump();
+
+    expect(find.text('Start 36h Fasting Session'), findsOneWidget);
+
+    await tester.tap(find.text('Start 36h Fasting Session'));
+    await tester.pump();
+
+    expect(
+      tracker.activeSession?.targetEndTime,
+      DateTime.utc(2026, 6, 22, 16, 15),
+    );
+    expect(find.text('36h 0m'), findsOneWidget);
+  });
+
   testWidgets('updates active Fasting Status as time passes', (tester) async {
     var now = DateTime.utc(2026, 6, 21, 4, 15);
 
