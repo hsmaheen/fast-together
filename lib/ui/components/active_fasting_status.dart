@@ -30,6 +30,10 @@ class ActiveFastingStatus extends StatelessWidget {
     final targetDuration = session.targetEndTime.difference(session.startTime);
     final remaining = session.remainingAt(currentTime);
     final isOverTarget = remaining.isNegative;
+    final heroLabel = isOverTarget ? 'Over Target' : 'Remaining';
+    final heroDuration = isOverTarget
+        ? session.overTargetAt(currentTime)
+        : remaining;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -37,45 +41,24 @@ class ActiveFastingStatus extends StatelessWidget {
       children: [
         Text('Fasting', style: Theme.of(context).textTheme.titleLarge),
         const SizedBox(height: 16),
-        LayoutBuilder(
-          builder: (context, constraints) {
-            final textScale = MediaQuery.textScalerOf(context).scale(16) / 16;
-            final shouldStack = constraints.maxWidth < 360 || textScale > 1.3;
-            final progressRing = FastingProgressRing(
-              progress: elapsed.inMinutes / targetDuration.inMinutes,
-              isOverTarget: isOverTarget,
-            );
-            final timeSummary = FastingTimeSummary(
-              startTime: session.startTime,
-              targetEndTime: session.targetEndTime,
-              elapsed: elapsed,
-              remaining: isOverTarget ? null : remaining,
-              overTarget: isOverTarget
-                  ? session.overTargetAt(currentTime)
-                  : null,
-            );
-
-            if (shouldStack) {
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  progressRing,
-                  const SizedBox(height: 16),
-                  timeSummary,
-                ],
-              );
-            }
-
-            return Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                progressRing,
-                const SizedBox(width: 20),
-                Expanded(child: timeSummary),
-              ],
-            );
-          },
+        Center(
+          child: FastingProgressRing(
+            progress: elapsed.inMinutes / targetDuration.inMinutes,
+            isOverTarget: isOverTarget,
+            size: 160,
+            child: _HeroTimer(
+              label: heroLabel,
+              value: _formatDuration(heroDuration),
+            ),
+          ),
+        ),
+        const SizedBox(height: 20),
+        FastingTimeSummary(
+          startTime: session.startTime,
+          targetEndTime: session.targetEndTime,
+          elapsed: elapsed,
+          remaining: null,
+          overTarget: null,
         ),
         const SizedBox(height: 20),
         ActualEndTimeSelector(
@@ -98,6 +81,56 @@ class ActiveFastingStatus extends StatelessWidget {
           child: const Text('End Fasting Session'),
         ),
       ],
+    );
+  }
+
+  String _formatDuration(Duration duration) {
+    final hours = duration.inHours;
+    final minutes = duration.inMinutes.remainder(60);
+
+    if (hours == 0) {
+      return '${minutes}m';
+    }
+
+    return '${hours}h ${minutes}m';
+  }
+}
+
+class _HeroTimer extends StatelessWidget {
+  const _HeroTimer({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return SizedBox(
+      width: 112,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            label,
+            textAlign: TextAlign.center,
+            style: theme.textTheme.labelMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 4),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              value,
+              textAlign: TextAlign.center,
+              style: theme.textTheme.headlineSmall?.copyWith(
+                color: theme.colorScheme.onSurface,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

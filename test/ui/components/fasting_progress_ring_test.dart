@@ -6,9 +6,7 @@ void main() {
   testWidgets('represents progress toward the target end time', (tester) async {
     await tester.pumpWidget(
       const MaterialApp(
-        home: Scaffold(
-          body: FastingProgressRing(progress: 0.25),
-        ),
+        home: Scaffold(body: FastingProgressRing(progress: 0.25)),
       ),
     );
 
@@ -25,10 +23,7 @@ void main() {
     await tester.pumpWidget(
       const MaterialApp(
         home: Scaffold(
-          body: FastingProgressRing(
-            progress: 1.25,
-            isOverTarget: true,
-          ),
+          body: FastingProgressRing(progress: 1.25, isOverTarget: true),
         ),
       ),
     );
@@ -40,5 +35,25 @@ void main() {
     expect(indicator.value, 1);
     expect(indicator.semanticsLabel, 'Fasting progress over target');
     expect(indicator.semanticsValue, '100%');
+  });
+
+  testWidgets('shows centered hero content inside the progress ring', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: FastingProgressRing(progress: 0.25, child: Text('11h 45m')),
+        ),
+      ),
+    );
+
+    expect(
+      find.descendant(
+        of: find.byType(FastingProgressRing),
+        matching: find.text('11h 45m'),
+      ),
+      findsOneWidget,
+    );
   });
 }

@@ -65,6 +65,46 @@ void main() {
     expect(find.byType(ActualEndTimeSelector), findsOneWidget);
   });
 
+  testWidgets(
+    'presents remaining time as the hero timer in the progress ring',
+    (tester) async {
+      final session = FastingSession.start(
+        startTime: DateTime.utc(2026, 6, 21),
+        plan: FastingPlan.sixteenHours,
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: ActiveFastingStatus(
+              session: session,
+              currentTime: DateTime.utc(2026, 6, 21, 4, 15),
+              selectedActualEndTime: DateTime.utc(2026, 6, 21, 4, 15),
+              onActualEndTimeChanged: (_) {},
+              onEndPressed: () {},
+            ),
+          ),
+        ),
+      );
+
+      expect(tester.getSize(find.byType(FastingProgressRing)).width, 160);
+      expect(
+        find.descendant(
+          of: find.byType(FastingProgressRing),
+          matching: find.text('Remaining'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: find.byType(FastingProgressRing),
+          matching: find.text('11h 45m'),
+        ),
+        findsOneWidget,
+      );
+    },
+  );
+
   testWidgets('calls onEndPressed when the end action is tapped', (
     tester,
   ) async {
