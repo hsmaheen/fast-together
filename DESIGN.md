@@ -109,7 +109,7 @@ The palette is restrained and autumnal: clean white keeps the product crisp, war
 
 ### Named Rules
 
-**The Ten Percent Color Rule.** Strong color is scarce. If Still Cobalt or Warm Ember begins to dominate a screen, the product has become too loud.
+**The Ten Percent Color Rule.** Strong color is scarce. If Autumn Amber or Soft Ember begins to dominate a screen, the product has become too loud.
 
 **The Premium Warmth Rule.** Warm does not mean generic beige wellness branding. Surfaces stay crisp, roles stay clear, and amber is used with restraint.
 
@@ -135,7 +135,7 @@ The palette is restrained and autumnal: clean white keeps the product crisp, war
 
 ## 4. Elevation
 
-Use tonal layering before shadows. Surfaces separate through white, cool surface, spacing, and borders. Shadows are allowed only for modal sheets, active overlays, and tactile pressed/hover feedback in prototypes.
+Use tonal layering before shadows. Surfaces separate through white, warm surface, spacing, and borders. Shadows are allowed only for modal sheets, active overlays, and tactile pressed/hover feedback in prototypes.
 
 ### Shadow Vocabulary
 
@@ -153,24 +153,24 @@ Use tonal layering before shadows. Surfaces separate through white, cool surface
 - **Shape:** Gently rounded rectangles (14px), not oversized bubbles.
 - **Primary:** Autumn Amber fill, Pure App White text, 14px vertical padding, full-width on narrow mobile screens when it is the main action.
 - **Hover / Focus:** 180-220ms ease-out transition, visible focus ring, slight tonal darkening or tactile lift. Reduced motion should remove movement while preserving state feedback.
-- **Secondary:** Cobalt Mist fill with Deep Quiet Ink text for lower-risk actions like editing start time or choosing another plan.
+- **Secondary:** Amber Mist fill with Deep Umber Ink text for lower-risk actions like editing start time or choosing another plan.
 
 ### Chips
 
 - **Style:** Pill shape for compact Fasting Plan choices and current status labels.
-- **State:** Selected chips use Cobalt Mist with Still Cobalt text or a Still Cobalt fill with white text when emphasis is necessary. Unselected chips stay quiet with a neutral border or surface.
+- **State:** Selected chips use Amber Mist with Autumn Amber text or an Autumn Amber fill with white text when emphasis is necessary. Unselected chips stay quiet with a neutral border or surface.
 
 ### Cards / Containers
 
 - **Corner Style:** Rounded but disciplined (18px for important panels, 24px only for app sheets or major mobile containers).
-- **Background:** Use Raised White or Cool Breath Surface.
+- **Background:** Use Raised Warm White or Warm Breath Surface.
 - **Shadow Strategy:** No shadow at rest unless the surface is an overlay.
 - **Border:** Use subtle full borders only when tonal layering is insufficient. Never use colored side stripes.
 - **Internal Padding:** 16px for compact panels, 24px for main status areas.
 
 ### Inputs / Fields
 
-- **Style:** Rounded 14px fields with Cool Breath Surface or Raised White fill.
+- **Style:** Rounded 14px fields with Warm Breath Surface or Raised Warm White fill.
 - **Focus:** Autumn Amber focus ring or border. Never rely on color alone; use clear outline thickness.
 - **Error / Disabled:** Error states should be calm and specific, not alarming unless data loss is possible.
 
