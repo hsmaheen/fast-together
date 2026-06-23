@@ -46,7 +46,7 @@ Use the domain language from `CONTEXT.md` in code, tests, commits, and explanati
 
 ## Preferred Build Order
 
-Start with pure domain logic before UI or Firebase:
+Keep building in the smallest useful slice that matches the current Linear issue. The broad order is:
 
 1. Fasting Session behavior in plain Dart.
 2. Local Flutter state around that behavior.
@@ -54,16 +54,14 @@ Start with pure domain logic before UI or Firebase:
 4. Firebase adapters behind tested interfaces.
 5. Circle sharing, invitations, notifications, and offline sync.
 
-The first production component should be small enough to explain in one paragraph and test with a handful of behavior-focused tests.
+The current codebase has already moved past the initial Fasting Session domain slice into local application/UI slices. Do not keep redoing the first domain component unless a Linear issue explicitly asks for it.
 
-## First Suggested Slice
+## Current Slice Guidance
 
-Build a public `FastingSession` domain interface that can answer:
+- Treat Linear as the source of truth for the next implementation slice.
+- For local UI work, build component-by-component before broad screen redesigns.
+- For design work, keep `PRODUCT.md` and `DESIGN.md` aligned with the warm, private, supportive direction before changing Flutter UI.
+- Before Firebase, Fasting Circle, invitation, notification, or sync work, make the data model and security rules explicit in an ADR or Linear issue.
+- Keep each slice small enough to explain in one paragraph and test with a handful of behavior-focused tests.
 
-- whether a session is active
-- elapsed duration at a given time
-- remaining duration before the target end time
-- over-target duration after the target end time
-- completed vs ended-early result after an actual end time is set
-
-Do not include Firebase, persistence, notifications, widgets, or animations in this slice.
+Do not add Firebase, persistence, notifications, widgets, or animations unless the active Linear issue explicitly calls for them.
