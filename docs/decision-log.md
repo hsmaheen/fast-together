@@ -71,3 +71,4 @@ Links: `PRODUCT.md`, `DESIGN.md`, `/Users/maheen/Downloads/material-theme.json`,
 - `0014` - Use UTC timestamps
 - `0015` - Use earned Flutter layers
 - `0016` - Use application clock for Fasting Session action time validation
+- `0017` - Use privacy-first Firestore data model
