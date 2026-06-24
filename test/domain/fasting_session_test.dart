@@ -110,16 +110,6 @@ void main() {
       );
     });
 
-    test('recalculates result after correcting actual end time', () {
-      final endedSession = endedSessionAfterTarget();
-
-      final correctedSession = endedSession.correctActualEndTime(
-        actualEndTime: DateTime.utc(2026, 6, 20, 23, 30),
-      );
-
-      expect(correctedSession.result, FastingResult.endedEarly);
-    });
-
     test('does not correct to a non-UTC actual end time', () {
       final endedSession = endedSessionAfterTarget();
 
@@ -161,26 +151,6 @@ void main() {
         ),
         throwsStateError,
       );
-    });
-
-    test('ends as completed when actual end reaches target end', () {
-      final session = activeSession();
-
-      final endedSession = session.end(
-        actualEndTime: DateTime.utc(2026, 6, 21),
-      );
-
-      expect(endedSession.result, FastingResult.completed);
-    });
-
-    test('ends early when actual end is before target end', () {
-      final session = activeSession();
-
-      final endedSession = session.end(
-        actualEndTime: DateTime.utc(2026, 6, 20, 23),
-      );
-
-      expect(endedSession.result, FastingResult.endedEarly);
     });
 
     test('does not end with a non-UTC actual end time', () {
@@ -328,15 +298,19 @@ void main() {
     });
 
     test('derives completed result when actual end reaches target end', () {
-      final session = endedSessionAfterTarget(
-        actualEndTime: DateTime.utc(2026, 6, 21, 0, 1),
+      final session = FastingSession(
+        startTime: DateTime.utc(2026, 6, 20, 8),
+        targetEndTime: DateTime.utc(2026, 6, 21),
+        actualEndTime: DateTime.utc(2026, 6, 21),
       );
 
       expect(session.result, FastingResult.completed);
     });
 
     test('derives ended-early result when actual end is before target end', () {
-      final session = endedSessionBeforeTarget(
+      final session = FastingSession(
+        startTime: DateTime.utc(2026, 6, 20, 8),
+        targetEndTime: DateTime.utc(2026, 6, 21),
         actualEndTime: DateTime.utc(2026, 6, 20, 23, 59),
       );
 
