@@ -129,6 +129,29 @@ void main() {
     expect(changedPlan?.duration, const Duration(hours: 36));
   });
 
+  testWidgets('filters non-numeric custom whole-hour input', (tester) async {
+    FastingPlan? changedPlan;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: FastingPlanSelector(
+            selectedPlan: FastingPlan.customHours(20),
+            onChanged: (plan) {
+              changedPlan = plan;
+            },
+          ),
+        ),
+      ),
+    );
+
+    await tester.enterText(find.byType(TextFormField), '3abc6');
+
+    expect(find.widgetWithText(TextFormField, '36'), findsOneWidget);
+    expect(changedPlan?.duration, const Duration(hours: 36));
+    expect(find.text('Enter 1-168 hours'), findsNothing);
+  });
+
   testWidgets('shows an error for out-of-range custom hours', (tester) async {
     FastingPlan? changedPlan;
 

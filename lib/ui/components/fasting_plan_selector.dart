@@ -1,5 +1,6 @@
 import 'package:fasting_app/domain/fasting_plan.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 class FastingPlanSelector extends StatefulWidget {
   const FastingPlanSelector({
@@ -80,6 +81,7 @@ class _FastingPlanSelectorState extends State<FastingPlanSelector> {
                 border: const OutlineInputBorder(),
               ),
               keyboardType: TextInputType.number,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
               onChanged: (value) {
                 final hours = int.tryParse(value);
                 if (hours == null) {
