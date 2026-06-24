@@ -36,5 +36,14 @@ void main() {
         DateTime.utc(2026, 6, 21, 0, 30),
       );
     });
+
+    test('rejects a non-UTC start time when deriving target end time', () {
+      final localStartTime = DateTime(2026, 6, 20, 8, 30);
+
+      expect(
+        () => FastingPlan.sixteenHours.targetEndTimeFrom(localStartTime),
+        throwsArgumentError,
+      );
+    });
   });
 }

@@ -23,5 +23,11 @@ class FastingPlan {
 
   final Duration duration;
 
-  DateTime targetEndTimeFrom(DateTime startTime) => startTime.add(duration);
+  DateTime targetEndTimeFrom(DateTime startTime) {
+    if (!startTime.isUtc) {
+      throw ArgumentError.value(startTime, 'startTime', 'must be UTC');
+    }
+
+    return startTime.add(duration);
+  }
 }
