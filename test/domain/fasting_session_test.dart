@@ -33,28 +33,19 @@ void main() {
     });
 
     test('is active until an actual end time is set', () {
-      final session = FastingSession(
-        startTime: DateTime.utc(2026, 6, 20, 8),
-        targetEndTime: DateTime.utc(2026, 6, 21),
-      );
+      final session = activeSession();
 
       expect(session.isActive, isTrue);
     });
 
     test('has no actual duration while active', () {
-      final session = FastingSession(
-        startTime: DateTime.utc(2026, 6, 20, 8),
-        targetEndTime: DateTime.utc(2026, 6, 21),
-      );
+      final session = activeSession();
 
       expect(session.actualDuration, isNull);
     });
 
     test('ends with a supplied actual end time', () {
-      final session = FastingSession(
-        startTime: DateTime.utc(2026, 6, 20, 8),
-        targetEndTime: DateTime.utc(2026, 6, 21),
-      );
+      final session = activeSession();
       final actualEndTime = DateTime.utc(2026, 6, 21, 1);
 
       final endedSession = session.end(actualEndTime: actualEndTime);
@@ -63,10 +54,7 @@ void main() {
     });
 
     test('is not active after ending', () {
-      final session = FastingSession(
-        startTime: DateTime.utc(2026, 6, 20, 8),
-        targetEndTime: DateTime.utc(2026, 6, 21),
-      );
+      final session = activeSession();
 
       final endedSession = session.end(
         actualEndTime: DateTime.utc(2026, 6, 21, 1),
@@ -76,10 +64,7 @@ void main() {
     });
 
     test('reports actual duration after ending', () {
-      final session = FastingSession(
-        startTime: DateTime.utc(2026, 6, 20, 8),
-        targetEndTime: DateTime.utc(2026, 6, 21),
-      );
+      final session = activeSession();
 
       final endedSession = session.end(
         actualEndTime: DateTime.utc(2026, 6, 21, 1),
@@ -89,10 +74,7 @@ void main() {
     });
 
     test('preserves minute precision for actual duration', () {
-      final session = FastingSession(
-        startTime: DateTime.utc(2026, 6, 20, 8),
-        targetEndTime: DateTime.utc(2026, 6, 21),
-      );
+      final session = activeSession();
 
       final endedSession = session.end(
         actualEndTime: DateTime.utc(2026, 6, 21, 4, 1),
@@ -105,11 +87,7 @@ void main() {
     });
 
     test('corrects actual end time after ending', () {
-      final endedSession = FastingSession(
-        startTime: DateTime.utc(2026, 6, 20, 8),
-        targetEndTime: DateTime.utc(2026, 6, 21),
-        actualEndTime: DateTime.utc(2026, 6, 21, 1),
-      );
+      final endedSession = endedSessionAfterTarget();
       final correctedEndTime = DateTime.utc(2026, 6, 21, 0, 30);
 
       final correctedSession = endedSession.correctActualEndTime(
@@ -120,11 +98,7 @@ void main() {
     });
 
     test('recalculates actual duration after correcting actual end time', () {
-      final endedSession = FastingSession(
-        startTime: DateTime.utc(2026, 6, 20, 8),
-        targetEndTime: DateTime.utc(2026, 6, 21),
-        actualEndTime: DateTime.utc(2026, 6, 21, 1),
-      );
+      final endedSession = endedSessionAfterTarget();
 
       final correctedSession = endedSession.correctActualEndTime(
         actualEndTime: DateTime.utc(2026, 6, 20, 20, 30),
@@ -137,11 +111,7 @@ void main() {
     });
 
     test('recalculates result after correcting actual end time', () {
-      final endedSession = FastingSession(
-        startTime: DateTime.utc(2026, 6, 20, 8),
-        targetEndTime: DateTime.utc(2026, 6, 21),
-        actualEndTime: DateTime.utc(2026, 6, 21, 1),
-      );
+      final endedSession = endedSessionAfterTarget();
 
       final correctedSession = endedSession.correctActualEndTime(
         actualEndTime: DateTime.utc(2026, 6, 20, 23, 30),
@@ -151,11 +121,7 @@ void main() {
     });
 
     test('does not correct to a non-UTC actual end time', () {
-      final endedSession = FastingSession(
-        startTime: DateTime.utc(2026, 6, 20, 8),
-        targetEndTime: DateTime.utc(2026, 6, 21),
-        actualEndTime: DateTime.utc(2026, 6, 21, 1),
-      );
+      final endedSession = endedSessionAfterTarget();
 
       expect(
         () => endedSession.correctActualEndTime(
@@ -167,11 +133,7 @@ void main() {
 
     test('does not correct actual end time to the start time', () {
       final startTime = DateTime.utc(2026, 6, 20, 8);
-      final endedSession = FastingSession(
-        startTime: startTime,
-        targetEndTime: DateTime.utc(2026, 6, 21),
-        actualEndTime: DateTime.utc(2026, 6, 21, 1),
-      );
+      final endedSession = endedSessionAfterTarget(startTime: startTime);
 
       expect(
         () => endedSession.correctActualEndTime(actualEndTime: startTime),
@@ -180,11 +142,7 @@ void main() {
     });
 
     test('does not correct actual end time before the start time', () {
-      final endedSession = FastingSession(
-        startTime: DateTime.utc(2026, 6, 20, 8),
-        targetEndTime: DateTime.utc(2026, 6, 21),
-        actualEndTime: DateTime.utc(2026, 6, 21, 1),
-      );
+      final endedSession = endedSessionAfterTarget();
 
       expect(
         () => endedSession.correctActualEndTime(
@@ -195,10 +153,7 @@ void main() {
     });
 
     test('does not correct actual end time while active', () {
-      final session = FastingSession(
-        startTime: DateTime.utc(2026, 6, 20, 8),
-        targetEndTime: DateTime.utc(2026, 6, 21),
-      );
+      final session = activeSession();
 
       expect(
         () => session.correctActualEndTime(
@@ -209,10 +164,7 @@ void main() {
     });
 
     test('ends as completed when actual end reaches target end', () {
-      final session = FastingSession(
-        startTime: DateTime.utc(2026, 6, 20, 8),
-        targetEndTime: DateTime.utc(2026, 6, 21),
-      );
+      final session = activeSession();
 
       final endedSession = session.end(
         actualEndTime: DateTime.utc(2026, 6, 21),
@@ -222,10 +174,7 @@ void main() {
     });
 
     test('ends early when actual end is before target end', () {
-      final session = FastingSession(
-        startTime: DateTime.utc(2026, 6, 20, 8),
-        targetEndTime: DateTime.utc(2026, 6, 21),
-      );
+      final session = activeSession();
 
       final endedSession = session.end(
         actualEndTime: DateTime.utc(2026, 6, 20, 23),
@@ -235,10 +184,7 @@ void main() {
     });
 
     test('does not end with a non-UTC actual end time', () {
-      final session = FastingSession(
-        startTime: DateTime.utc(2026, 6, 20, 8),
-        targetEndTime: DateTime.utc(2026, 6, 21),
-      );
+      final session = activeSession();
 
       expect(
         () => session.end(actualEndTime: DateTime(2026, 6, 21, 1)),
@@ -248,19 +194,13 @@ void main() {
 
     test('does not end at the start time', () {
       final startTime = DateTime.utc(2026, 6, 20, 8);
-      final session = FastingSession(
-        startTime: startTime,
-        targetEndTime: DateTime.utc(2026, 6, 21),
-      );
+      final session = activeSession(startTime: startTime);
 
       expect(() => session.end(actualEndTime: startTime), throwsArgumentError);
     });
 
     test('does not end before the start time', () {
-      final session = FastingSession(
-        startTime: DateTime.utc(2026, 6, 20, 8),
-        targetEndTime: DateTime.utc(2026, 6, 21),
-      );
+      final session = activeSession();
 
       expect(
         () => session.end(actualEndTime: DateTime.utc(2026, 6, 20, 7, 59)),
@@ -269,11 +209,7 @@ void main() {
     });
 
     test('does not end an already ended Fasting Session', () {
-      final endedSession = FastingSession(
-        startTime: DateTime.utc(2026, 6, 20, 8),
-        targetEndTime: DateTime.utc(2026, 6, 21),
-        actualEndTime: DateTime.utc(2026, 6, 21, 1),
-      );
+      final endedSession = endedSessionAfterTarget();
 
       expect(
         () => endedSession.end(actualEndTime: DateTime.utc(2026, 6, 21, 2)),
@@ -321,11 +257,7 @@ void main() {
     });
 
     test('is not active after an actual end time is set', () {
-      final session = FastingSession(
-        startTime: DateTime.utc(2026, 6, 20, 8),
-        targetEndTime: DateTime.utc(2026, 6, 21),
-        actualEndTime: DateTime.utc(2026, 6, 21, 1),
-      );
+      final session = endedSessionAfterTarget();
 
       expect(session.isActive, isFalse);
     });
@@ -342,10 +274,7 @@ void main() {
     });
 
     test('reports elapsed duration at a given time', () {
-      final session = FastingSession(
-        startTime: DateTime.utc(2026, 6, 20, 8),
-        targetEndTime: DateTime.utc(2026, 6, 21),
-      );
+      final session = activeSession();
 
       expect(
         session.elapsedAt(DateTime.utc(2026, 6, 20, 13, 30)),
@@ -354,10 +283,7 @@ void main() {
     });
 
     test('does not report elapsed duration for a non-UTC time', () {
-      final session = FastingSession(
-        startTime: DateTime.utc(2026, 6, 20, 8),
-        targetEndTime: DateTime.utc(2026, 6, 21),
-      );
+      final session = activeSession();
 
       expect(
         () => session.elapsedAt(DateTime(2026, 6, 20, 13, 30)),
@@ -366,10 +292,7 @@ void main() {
     });
 
     test('reports remaining duration before the target end time', () {
-      final session = FastingSession(
-        startTime: DateTime.utc(2026, 6, 20, 8),
-        targetEndTime: DateTime.utc(2026, 6, 21),
-      );
+      final session = activeSession();
 
       expect(
         session.remainingAt(DateTime.utc(2026, 6, 20, 20, 15)),
@@ -378,10 +301,7 @@ void main() {
     });
 
     test('does not report remaining duration for a non-UTC time', () {
-      final session = FastingSession(
-        startTime: DateTime.utc(2026, 6, 20, 8),
-        targetEndTime: DateTime.utc(2026, 6, 21),
-      );
+      final session = activeSession();
 
       expect(
         () => session.remainingAt(DateTime(2026, 6, 20, 20, 15)),
@@ -390,10 +310,7 @@ void main() {
     });
 
     test('reports over-target duration after the target end time', () {
-      final session = FastingSession(
-        startTime: DateTime.utc(2026, 6, 20, 8),
-        targetEndTime: DateTime.utc(2026, 6, 21),
-      );
+      final session = activeSession();
 
       expect(
         session.overTargetAt(DateTime.utc(2026, 6, 21, 1, 20)),
@@ -402,10 +319,7 @@ void main() {
     });
 
     test('does not report over-target duration for a non-UTC time', () {
-      final session = FastingSession(
-        startTime: DateTime.utc(2026, 6, 20, 8),
-        targetEndTime: DateTime.utc(2026, 6, 21),
-      );
+      final session = activeSession();
 
       expect(
         () => session.overTargetAt(DateTime(2026, 6, 21, 1, 20)),
@@ -414,9 +328,7 @@ void main() {
     });
 
     test('derives completed result when actual end reaches target end', () {
-      final session = FastingSession(
-        startTime: DateTime.utc(2026, 6, 20, 8),
-        targetEndTime: DateTime.utc(2026, 6, 21),
+      final session = endedSessionAfterTarget(
         actualEndTime: DateTime.utc(2026, 6, 21, 0, 1),
       );
 
@@ -424,13 +336,58 @@ void main() {
     });
 
     test('derives ended-early result when actual end is before target end', () {
-      final session = FastingSession(
-        startTime: DateTime.utc(2026, 6, 20, 8),
-        targetEndTime: DateTime.utc(2026, 6, 21),
+      final session = endedSessionBeforeTarget(
         actualEndTime: DateTime.utc(2026, 6, 20, 23, 59),
       );
 
       expect(session.result, FastingResult.endedEarly);
     });
   });
+}
+
+FastingSession activeSession({DateTime? startTime, DateTime? targetEndTime}) {
+  final resolvedStartTime = startTime ?? DateTime.utc(2026, 6, 20, 8);
+
+  return FastingSession(
+    startTime: resolvedStartTime,
+    targetEndTime:
+        targetEndTime ?? resolvedStartTime.add(const Duration(hours: 16)),
+  );
+}
+
+FastingSession endedSessionAfterTarget({
+  DateTime? startTime,
+  DateTime? targetEndTime,
+  DateTime? actualEndTime,
+}) {
+  final session = activeSession(
+    startTime: startTime,
+    targetEndTime: targetEndTime,
+  );
+
+  return FastingSession(
+    startTime: session.startTime,
+    targetEndTime: session.targetEndTime,
+    actualEndTime:
+        actualEndTime ?? session.targetEndTime.add(const Duration(hours: 1)),
+  );
+}
+
+FastingSession endedSessionBeforeTarget({
+  DateTime? startTime,
+  DateTime? targetEndTime,
+  DateTime? actualEndTime,
+}) {
+  final session = activeSession(
+    startTime: startTime,
+    targetEndTime: targetEndTime,
+  );
+
+  return FastingSession(
+    startTime: session.startTime,
+    targetEndTime: session.targetEndTime,
+    actualEndTime:
+        actualEndTime ??
+        session.targetEndTime.subtract(const Duration(hours: 1)),
+  );
 }
