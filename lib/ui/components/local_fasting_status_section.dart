@@ -156,6 +156,12 @@ class _LocalFastingStatusSectionState extends State<LocalFastingStatusSection> {
               _latestSessionErrorMessage = null;
             });
           },
+          onSessionDeletePressed: (session) {
+            setState(() {
+              _tracker.deleteEndedSession(session);
+              _latestSessionErrorMessage = null;
+            });
+          },
           onLatestActualEndTimeChanged: (actualEndTime) {
             setState(() {
               final latestSession = _tracker.latestSession;

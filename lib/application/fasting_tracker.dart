@@ -68,6 +68,17 @@ class FastingTracker {
     _recentEndedSessions.removeAt(0);
   }
 
+  void deleteEndedSession(FastingSession session) {
+    if (session.isActive) {
+      throw StateError('Cannot delete an active Fasting Session');
+    }
+
+    final wasDeleted = _recentEndedSessions.remove(session);
+    if (!wasDeleted) {
+      throw StateError('Cannot delete a Fasting Session outside history');
+    }
+  }
+
   FastingSession? get _latestEndedSession =>
       _recentEndedSessions.isEmpty ? null : _recentEndedSessions.first;
 }

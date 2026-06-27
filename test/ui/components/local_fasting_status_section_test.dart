@@ -290,7 +290,12 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
-          body: LocalFastingStatusSection(nowUtc: () => now, tracker: tracker),
+          body: SingleChildScrollView(
+            child: LocalFastingStatusSection(
+              nowUtc: () => now,
+              tracker: tracker,
+            ),
+          ),
         ),
       ),
     );
@@ -301,6 +306,53 @@ void main() {
     expect(find.text('Completed'), findsOneWidget);
     expect(find.text('Ended Early'), findsOneWidget);
     expect(find.text('Actual End Time'), findsNWidgets(2));
+  });
+
+  testWidgets('deletes a specific older ended Fasting Session', (tester) async {
+    var now = DateTime.utc(2026, 6, 23);
+    final tracker = FastingTracker(nowUtc: () => now);
+
+    tracker.start(
+      startTime: DateTime.utc(2026, 6, 20, 4),
+      plan: FastingPlan.sixteenHours,
+    );
+    final olderEndTime = DateTime.utc(2026, 6, 20, 20);
+    tracker.end(actualEndTime: olderEndTime);
+    tracker.start(
+      startTime: DateTime.utc(2026, 6, 21, 4),
+      plan: FastingPlan.sixteenHours,
+    );
+    final deletedEndTime = DateTime.utc(2026, 6, 21, 20);
+    tracker.end(actualEndTime: deletedEndTime);
+    tracker.start(
+      startTime: DateTime.utc(2026, 6, 22, 4),
+      plan: FastingPlan.sixteenHours,
+    );
+    final latestEndTime = DateTime.utc(2026, 6, 22, 20);
+    tracker.end(actualEndTime: latestEndTime);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: LocalFastingStatusSection(
+              nowUtc: () => now,
+              tracker: tracker,
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.byKey(ValueKey('delete-$deletedEndTime')));
+    await tester.pump();
+
+    expect(
+      tracker.recentEndedSessions.map((session) => session.actualEndTime),
+      [latestEndTime, olderEndTime],
+    );
+    expect(find.byKey(ValueKey('delete-$deletedEndTime')), findsNothing);
+    expect(find.byKey(ValueKey('delete-$olderEndTime')), findsOneWidget);
   });
 
   testWidgets('corrects latest ended Fasting Session actual end time', (

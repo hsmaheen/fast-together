@@ -189,12 +189,47 @@ void main() {
       );
     });
 
+    test('deletes a specific ended Fasting Session from recent history', () {
+      final tracker = trackerAfterTestSessions();
+      tracker.start(
+        startTime: DateTime.utc(2026, 6, 19, 8),
+        plan: FastingPlan.sixteenHours,
+      );
+      final oldestEndTime = DateTime.utc(2026, 6, 20, 1);
+      tracker.end(actualEndTime: oldestEndTime);
+      tracker.start(
+        startTime: DateTime.utc(2026, 6, 20, 8),
+        plan: FastingPlan.sixteenHours,
+      );
+      final sessionToDeleteEndTime = DateTime.utc(2026, 6, 21, 1);
+      tracker.end(actualEndTime: sessionToDeleteEndTime);
+      tracker.start(
+        startTime: DateTime.utc(2026, 6, 21, 8),
+        plan: FastingPlan.sixteenHours,
+      );
+      final newestEndTime = DateTime.utc(2026, 6, 22, 1);
+      tracker.end(actualEndTime: newestEndTime);
+      final sessionToDelete = tracker.recentEndedSessions[1];
+
+      tracker.deleteEndedSession(sessionToDelete);
+
+      expect(
+        tracker.recentEndedSessions.map((session) => session.actualEndTime),
+        [newestEndTime, oldestEndTime],
+      );
+      expect(tracker.latestSession?.actualEndTime, newestEndTime);
+    });
+
     test('does not delete an active Fasting Session', () {
       final tracker = trackerAfterTestSessions();
       final startTime = DateTime.utc(2026, 6, 21, 8);
       tracker.start(startTime: startTime, plan: FastingPlan.sixteenHours);
 
       expect(() => tracker.deleteLatestEndedSession(), throwsStateError);
+      expect(
+        () => tracker.deleteEndedSession(tracker.activeSession!),
+        throwsStateError,
+      );
 
       expect(tracker.activeSession?.startTime, startTime);
       expect(tracker.status, FastingStatus.fasting);

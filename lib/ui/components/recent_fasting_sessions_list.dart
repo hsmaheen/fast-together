@@ -8,6 +8,7 @@ class RecentFastingSessionsList extends StatelessWidget {
     required this.sessions,
     this.onLatestActualEndTimeChanged,
     this.onLatestDeletePressed,
+    this.onSessionDeletePressed,
     this.latestSessionErrorMessage,
     this.selectActualEndTime,
     super.key,
@@ -16,6 +17,7 @@ class RecentFastingSessionsList extends StatelessWidget {
   final List<FastingSession> sessions;
   final ValueChanged<DateTime>? onLatestActualEndTimeChanged;
   final VoidCallback? onLatestDeletePressed;
+  final ValueChanged<FastingSession>? onSessionDeletePressed;
   final String? latestSessionErrorMessage;
   final ActualEndTimePicker? selectActualEndTime;
 
@@ -67,7 +69,12 @@ class RecentFastingSessionsList extends StatelessWidget {
               selectActualEndTime: selectActualEndTime,
             )
           else
-            _RecentFastingSessionItem(sessions[index]),
+            _RecentFastingSessionItem(
+              sessions[index],
+              onDeletePressed: onSessionDeletePressed == null
+                  ? null
+                  : () => onSessionDeletePressed!(sessions[index]),
+            ),
           if (index < sessions.length - 1) const SizedBox(height: 8),
         ],
       ],
@@ -82,9 +89,10 @@ class RecentFastingSessionsList extends StatelessWidget {
 }
 
 class _RecentFastingSessionItem extends StatelessWidget {
-  const _RecentFastingSessionItem(this.session);
+  const _RecentFastingSessionItem(this.session, {this.onDeletePressed});
 
   final FastingSession session;
+  final VoidCallback? onDeletePressed;
 
   @override
   Widget build(BuildContext context) {
@@ -111,6 +119,20 @@ class _RecentFastingSessionItem extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
+            if (onDeletePressed != null) ...[
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  key: ValueKey('delete-$actualEndTime'),
+                  onPressed: onDeletePressed,
+                  style: TextButton.styleFrom(
+                    foregroundColor: theme.colorScheme.error,
+                  ),
+                  child: const Text('Delete'),
+                ),
+              ),
+              const SizedBox(height: 8),
+            ],
             _SummaryRow(label: 'Result', value: _formatResult(result)),
             const SizedBox(height: 8),
             _SummaryRow(
