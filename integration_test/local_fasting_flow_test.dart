@@ -148,6 +148,72 @@ void main() {
       expect(find.text('Remaining'), findsOneWidget);
       expect(find.text('12h 0m'), findsOneWidget);
     });
+
+    testWidgets(
+      'ends a Fasting Session from a corrected actual end time through the sheet',
+      (tester) async {
+        var now = DateTime.utc(2026, 6, 21, 8);
+        final correctedActualEndTime = DateTime.utc(2026, 6, 21, 23, 45);
+
+        await tester.pumpWidget(
+          FastingApp(
+            nowUtc: () => now,
+            selectActualEndTime: (_, selectedActualEndTime) async {
+              expect(selectedActualEndTime, DateTime.utc(2026, 6, 22, 1));
+              return correctedActualEndTime;
+            },
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        await _tapByKey(tester, const ValueKey('startFastingSessionButton'));
+        expect(
+          find.byKey(const ValueKey('activeFastingStatus')),
+          findsOneWidget,
+        );
+
+        now = DateTime.utc(2026, 6, 22, 1);
+        await _openEndFastingSessionSheet(tester);
+
+        await _editEndFastingSessionActualEndTime(tester);
+        expect(
+          find.descendant(
+            of: find.byKey(const ValueKey('endFastingSessionSheet')),
+            matching: find.text('15h 45m'),
+          ),
+          findsOneWidget,
+        );
+        expect(
+          find.descendant(
+            of: find.byKey(const ValueKey('endFastingSessionSheet')),
+            matching: find.text('Ended Early'),
+          ),
+          findsOneWidget,
+        );
+
+        await _tapByKey(
+          tester,
+          const ValueKey('confirmEndFastingSessionButton'),
+        );
+
+        expect(find.text('Not Fasting'), findsOneWidget);
+        expect(
+          find.byKey(const ValueKey('personalFastingActivityList')),
+          findsOneWidget,
+        );
+        expect(
+          find.byKey(const ValueKey('recentFastingSessionItem_0')),
+          findsOneWidget,
+        );
+        expect(find.text('Latest Fasting Session'), findsOneWidget);
+        expect(find.text('Ended Early'), findsOneWidget);
+        expect(find.text('15h 45m'), findsOneWidget);
+        expect(
+          find.text(_formatLocalDateAndTime(tester, correctedActualEndTime)),
+          findsOneWidget,
+        );
+      },
+    );
   });
 }
 
@@ -159,10 +225,38 @@ Future<void> _tapByKey(WidgetTester tester, Key key) async {
 }
 
 Future<void> _endFastingSession(WidgetTester tester) async {
-  await _tapByKey(tester, const ValueKey('endFastingSessionButton'));
-  expect(find.byKey(const ValueKey('endFastingSessionSheet')), findsOneWidget);
+  await _openEndFastingSessionSheet(tester);
   await tester.tap(
     find.byKey(const ValueKey('confirmEndFastingSessionButton')),
   );
   await tester.pumpAndSettle();
+}
+
+Future<void> _openEndFastingSessionSheet(WidgetTester tester) async {
+  await _tapByKey(tester, const ValueKey('endFastingSessionButton'));
+  expect(find.byKey(const ValueKey('endFastingSessionSheet')), findsOneWidget);
+}
+
+Future<void> _editEndFastingSessionActualEndTime(WidgetTester tester) async {
+  await tester.tap(
+    find.descendant(
+      of: find.byKey(const ValueKey('endFastingSessionSheet')),
+      matching: find.text('Edit'),
+    ),
+  );
+  await tester.pumpAndSettle();
+}
+
+String _formatLocalDateAndTime(WidgetTester tester, DateTime value) {
+  final context = tester.element(
+    find.byKey(const ValueKey('recentFastingSessionItem_0')),
+  );
+  final localizations = MaterialLocalizations.of(context);
+  final localValue = value.toLocal();
+  final date = localizations.formatMediumDate(localValue);
+  final time = localizations.formatTimeOfDay(
+    TimeOfDay.fromDateTime(localValue),
+  );
+
+  return '$date $time';
 }
