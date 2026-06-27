@@ -151,6 +151,87 @@ void main() {
       },
     );
 
+    test('totals ended Fasting Sessions for the same local date', () {
+      final tracker = trackerAfterTestSessions();
+      tracker.start(
+        startTime: DateTime.utc(2026, 6, 20, 8),
+        plan: FastingPlan.sixteenHours,
+      );
+      tracker.end(actualEndTime: DateTime.utc(2026, 6, 21, 0));
+      tracker.start(
+        startTime: DateTime.utc(2026, 6, 21, 8),
+        plan: FastingPlan.twelveHours,
+      );
+      tracker.end(actualEndTime: DateTime.utc(2026, 6, 21, 15, 30));
+
+      expect(
+        tracker.dailyFastingTotals(
+          localTimeFor: (time) => time.add(const Duration(hours: 8)),
+        ),
+        [
+          DailyFastingTotal(
+            date: DateTime(2026, 6, 21),
+            duration: const Duration(hours: 23, minutes: 30),
+          ),
+        ],
+      );
+    });
+
+    test('keeps daily fasting totals on separate local dates', () {
+      final tracker = trackerAfterTestSessions();
+      tracker.start(
+        startTime: DateTime.utc(2026, 6, 19, 8),
+        plan: FastingPlan.sixteenHours,
+      );
+      tracker.end(actualEndTime: DateTime.utc(2026, 6, 20, 0));
+      tracker.start(
+        startTime: DateTime.utc(2026, 6, 21, 8),
+        plan: FastingPlan.twelveHours,
+      );
+      tracker.end(actualEndTime: DateTime.utc(2026, 6, 21, 20));
+
+      expect(
+        tracker.dailyFastingTotals(
+          localTimeFor: (time) => time.add(const Duration(hours: 8)),
+        ),
+        [
+          DailyFastingTotal(
+            date: DateTime(2026, 6, 22),
+            duration: const Duration(hours: 12),
+          ),
+          DailyFastingTotal(
+            date: DateTime(2026, 6, 20),
+            duration: const Duration(hours: 16),
+          ),
+        ],
+      );
+    });
+
+    test('does not count an active Fasting Session in daily totals', () {
+      final tracker = trackerAfterTestSessions();
+      tracker.start(
+        startTime: DateTime.utc(2026, 6, 20, 8),
+        plan: FastingPlan.sixteenHours,
+      );
+      tracker.end(actualEndTime: DateTime.utc(2026, 6, 21, 0));
+      tracker.start(
+        startTime: DateTime.utc(2026, 6, 21, 8),
+        plan: FastingPlan.twelveHours,
+      );
+
+      expect(
+        tracker.dailyFastingTotals(
+          localTimeFor: (time) => time.add(const Duration(hours: 8)),
+        ),
+        [
+          DailyFastingTotal(
+            date: DateTime(2026, 6, 21),
+            duration: const Duration(hours: 16),
+          ),
+        ],
+      );
+    });
+
     test('deletes the latest ended Fasting Session', () {
       final tracker = trackerAfterTestSessions();
       tracker.start(

@@ -3,6 +3,23 @@ import 'package:fasting_app/domain/fasting_session.dart';
 
 enum FastingStatus { fasting, notFasting }
 
+class DailyFastingTotal {
+  const DailyFastingTotal({required this.date, required this.duration});
+
+  final DateTime date;
+  final Duration duration;
+
+  @override
+  bool operator ==(Object other) {
+    return other is DailyFastingTotal &&
+        other.date == date &&
+        other.duration == duration;
+  }
+
+  @override
+  int get hashCode => Object.hash(date, duration);
+}
+
 class FastingTracker {
   FastingTracker({DateTime Function()? nowUtc})
     : _nowUtc = nowUtc ?? (() => DateTime.now().toUtc());
@@ -17,6 +34,35 @@ class FastingTracker {
       List.unmodifiable(_recentEndedSessions);
 
   FastingSession? get activeSession => _activeSession;
+
+  List<DailyFastingTotal> dailyFastingTotals({
+    DateTime Function(DateTime time)? localTimeFor,
+  }) {
+    final toLocalTime = localTimeFor ?? (DateTime time) => time.toLocal();
+    final durationsByDate = <DateTime, Duration>{};
+
+    for (final session in _recentEndedSessions) {
+      final duration = session.actualDuration;
+      final actualEndTime = session.actualEndTime;
+      if (duration == null || actualEndTime == null) {
+        continue;
+      }
+
+      final localEndTime = toLocalTime(actualEndTime);
+      final localDate = DateTime(
+        localEndTime.year,
+        localEndTime.month,
+        localEndTime.day,
+      );
+      durationsByDate[localDate] =
+          (durationsByDate[localDate] ?? Duration.zero) + duration;
+    }
+
+    return [
+      for (final entry in durationsByDate.entries)
+        DailyFastingTotal(date: entry.key, duration: entry.value),
+    ];
+  }
 
   FastingStatus get status {
     if (activeSession != null) {
