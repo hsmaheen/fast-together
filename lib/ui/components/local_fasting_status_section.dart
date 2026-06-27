@@ -5,7 +5,7 @@ import 'package:fasting_app/domain/fasting_plan.dart';
 import 'package:fasting_app/ui/components/actual_end_time_selector.dart';
 import 'package:fasting_app/ui/components/active_fasting_status.dart';
 import 'package:fasting_app/ui/components/fasting_plan_selector.dart';
-import 'package:fasting_app/ui/components/latest_fasting_session_summary.dart';
+import 'package:fasting_app/ui/components/recent_fasting_sessions_list.dart';
 import 'package:fasting_app/ui/components/start_fast_button.dart';
 import 'package:fasting_app/ui/components/start_time_selector.dart';
 import 'package:flutter/material.dart';
@@ -58,7 +58,7 @@ class _LocalFastingStatusSectionState extends State<LocalFastingStatusSection> {
   @override
   Widget build(BuildContext context) {
     final activeSession = _tracker.activeSession;
-    final latestSession = _tracker.latestSession;
+    final recentEndedSessions = _tracker.recentEndedSessions;
     _selectedStartTime ??= widget.nowUtc();
 
     if (activeSession != null) {
@@ -147,37 +147,40 @@ class _LocalFastingStatusSectionState extends State<LocalFastingStatusSection> {
             });
           },
         ),
-        if (latestSession != null && !latestSession.isActive) ...[
-          const SizedBox(height: 20),
-          LatestFastingSessionSummary(
-            session: latestSession,
-            onDeletePressed: () {
-              setState(() {
-                _tracker.deleteLatestEndedSession();
-                _latestSessionErrorMessage = null;
-              });
-            },
-            onActualEndTimeChanged: (actualEndTime) {
-              setState(() {
-                if (!actualEndTime.isAfter(latestSession.startTime)) {
-                  _latestSessionErrorMessage =
-                      'Actual end time must be after the start time';
-                  return;
-                }
+        const SizedBox(height: 20),
+        RecentFastingSessionsList(
+          sessions: recentEndedSessions,
+          onLatestDeletePressed: () {
+            setState(() {
+              _tracker.deleteLatestEndedSession();
+              _latestSessionErrorMessage = null;
+            });
+          },
+          onLatestActualEndTimeChanged: (actualEndTime) {
+            setState(() {
+              final latestSession = _tracker.latestSession;
+              if (latestSession == null || latestSession.isActive) {
+                return;
+              }
 
-                try {
-                  _tracker.correctActualEndTime(actualEndTime: actualEndTime);
-                  _latestSessionErrorMessage = null;
-                } on ArgumentError {
-                  _latestSessionErrorMessage =
-                      'Actual end time cannot be in the future';
-                }
-              });
-            },
-            errorMessage: _latestSessionErrorMessage,
-            selectActualEndTime: widget.selectActualEndTime,
-          ),
-        ],
+              if (!actualEndTime.isAfter(latestSession.startTime)) {
+                _latestSessionErrorMessage =
+                    'Actual end time must be after the start time';
+                return;
+              }
+
+              try {
+                _tracker.correctActualEndTime(actualEndTime: actualEndTime);
+                _latestSessionErrorMessage = null;
+              } on ArgumentError {
+                _latestSessionErrorMessage =
+                    'Actual end time cannot be in the future';
+              }
+            });
+          },
+          latestSessionErrorMessage: _latestSessionErrorMessage,
+          selectActualEndTime: widget.selectActualEndTime,
+        ),
       ],
     );
   }

@@ -1,9 +1,11 @@
 import 'package:fasting_app/application/fasting_tracker.dart';
+import 'package:fasting_app/domain/fasting_plan.dart';
 import 'package:fasting_app/domain/fasting_session.dart';
 import 'package:fasting_app/ui/components/fasting_plan_selector.dart';
 import 'package:fasting_app/ui/components/active_fasting_status.dart';
 import 'package:fasting_app/ui/components/latest_fasting_session_summary.dart';
 import 'package:fasting_app/ui/components/local_fasting_status_section.dart';
+import 'package:fasting_app/ui/components/recent_fasting_sessions_list.dart';
 import 'package:fasting_app/ui/components/start_fast_button.dart';
 import 'package:fasting_app/ui/components/start_time_selector.dart';
 import 'package:flutter/material.dart';
@@ -28,6 +30,25 @@ void main() {
     expect(find.byType(StartTimeSelector), findsOneWidget);
     expect(find.byType(StartFastButton), findsOneWidget);
     expect(find.text('Start 16h Fasting Session'), findsOneWidget);
+  });
+
+  testWidgets('shows empty Personal Fasting Activity when Not Fasting', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: LocalFastingStatusSection(
+            nowUtc: () => DateTime.utc(2026, 6, 21, 4, 15),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('Not Fasting'), findsOneWidget);
+    expect(find.byType(RecentFastingSessionsList), findsOneWidget);
+    expect(find.text('Personal Fasting Activity'), findsOneWidget);
+    expect(find.text('No recent Fasting Sessions yet.'), findsOneWidget);
   });
 
   testWidgets('starts a local active Fasting Session from the selected plan', (
@@ -247,6 +268,39 @@ void main() {
       ),
       findsOneWidget,
     );
+  });
+
+  testWidgets('shows multiple recent ended Fasting Sessions when Not Fasting', (
+    tester,
+  ) async {
+    var now = DateTime.utc(2026, 6, 22, 18);
+    final tracker = FastingTracker(nowUtc: () => now);
+
+    tracker.start(
+      startTime: DateTime.utc(2026, 6, 21, 4),
+      plan: FastingPlan.sixteenHours,
+    );
+    tracker.end(actualEndTime: DateTime.utc(2026, 6, 21, 20));
+    tracker.start(
+      startTime: DateTime.utc(2026, 6, 22, 4),
+      plan: FastingPlan.sixteenHours,
+    );
+    tracker.end(actualEndTime: DateTime.utc(2026, 6, 22, 18));
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: LocalFastingStatusSection(nowUtc: () => now, tracker: tracker),
+        ),
+      ),
+    );
+
+    expect(find.text('Not Fasting'), findsOneWidget);
+    expect(find.byType(RecentFastingSessionsList), findsOneWidget);
+    expect(find.text('Personal Fasting Activity'), findsOneWidget);
+    expect(find.text('Completed'), findsOneWidget);
+    expect(find.text('Ended Early'), findsOneWidget);
+    expect(find.text('Actual End Time'), findsNWidgets(2));
   });
 
   testWidgets('corrects latest ended Fasting Session actual end time', (

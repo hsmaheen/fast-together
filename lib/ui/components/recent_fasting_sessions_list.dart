@@ -1,10 +1,23 @@
 import 'package:fasting_app/domain/fasting_session.dart';
+import 'package:fasting_app/ui/components/actual_end_time_selector.dart';
+import 'package:fasting_app/ui/components/latest_fasting_session_summary.dart';
 import 'package:flutter/material.dart';
 
 class RecentFastingSessionsList extends StatelessWidget {
-  const RecentFastingSessionsList({required this.sessions, super.key});
+  const RecentFastingSessionsList({
+    required this.sessions,
+    this.onLatestActualEndTimeChanged,
+    this.onLatestDeletePressed,
+    this.latestSessionErrorMessage,
+    this.selectActualEndTime,
+    super.key,
+  });
 
   final List<FastingSession> sessions;
+  final ValueChanged<DateTime>? onLatestActualEndTimeChanged;
+  final VoidCallback? onLatestDeletePressed;
+  final String? latestSessionErrorMessage;
+  final ActualEndTimePicker? selectActualEndTime;
 
   @override
   Widget build(BuildContext context) {
@@ -45,12 +58,27 @@ class RecentFastingSessionsList extends StatelessWidget {
         Text('Personal Fasting Activity', style: theme.textTheme.titleSmall),
         const SizedBox(height: 12),
         for (var index = 0; index < sessions.length; index += 1) ...[
-          _RecentFastingSessionItem(sessions[index]),
+          if (index == 0 && _showsLatestSessionActions)
+            LatestFastingSessionSummary(
+              session: sessions[index],
+              onActualEndTimeChanged: onLatestActualEndTimeChanged,
+              onDeletePressed: onLatestDeletePressed,
+              errorMessage: latestSessionErrorMessage,
+              selectActualEndTime: selectActualEndTime,
+            )
+          else
+            _RecentFastingSessionItem(sessions[index]),
           if (index < sessions.length - 1) const SizedBox(height: 8),
         ],
       ],
     );
   }
+
+  bool get _showsLatestSessionActions =>
+      onLatestActualEndTimeChanged != null ||
+      onLatestDeletePressed != null ||
+      latestSessionErrorMessage != null ||
+      selectActualEndTime != null;
 }
 
 class _RecentFastingSessionItem extends StatelessWidget {
