@@ -5,6 +5,7 @@ import 'package:fasting_app/domain/fasting_plan.dart';
 import 'package:fasting_app/domain/fasting_session.dart';
 import 'package:fasting_app/ui/components/actual_end_time_selector.dart';
 import 'package:fasting_app/ui/components/active_fasting_status.dart';
+import 'package:fasting_app/ui/components/calendar_day_fasting_history.dart';
 import 'package:fasting_app/ui/components/fasting_plan_selector.dart';
 import 'package:fasting_app/ui/components/recent_fasting_sessions_list.dart';
 import 'package:fasting_app/ui/components/start_fast_button.dart';
@@ -74,7 +75,21 @@ class _LocalFastingStatusSectionState extends State<LocalFastingStatusSection> {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text('Not Fasting', style: Theme.of(context).textTheme.titleLarge),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Text(
+                'Not Fasting',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+            ),
+            TextButton(
+              onPressed: _showCalendarDayFastingHistory,
+              child: const Text('Daily totals'),
+            ),
+          ],
+        ),
         const SizedBox(height: 16),
         FastingPlanSelector(
           selectedPlan: _selectedPlan,
@@ -162,6 +177,27 @@ class _LocalFastingStatusSectionState extends State<LocalFastingStatusSection> {
           selectActualEndTime: widget.selectActualEndTime,
         ),
       ],
+    );
+  }
+
+  Future<void> _showCalendarDayFastingHistory() async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => SafeArea(
+        child: SingleChildScrollView(
+          padding: EdgeInsets.fromLTRB(
+            24,
+            24,
+            24,
+            24 + MediaQuery.viewInsetsOf(context).bottom,
+          ),
+          child: CalendarDayFastingHistory(
+            today: widget.nowUtc().toLocal(),
+            dailyTotals: _tracker.dailyFastingTotals(),
+          ),
+        ),
+      ),
     );
   }
 
