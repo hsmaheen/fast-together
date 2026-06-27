@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:fasting_app/application/fasting_tracker.dart';
 import 'package:fasting_app/domain/fasting_plan.dart';
+import 'package:fasting_app/domain/fasting_session.dart';
 import 'package:fasting_app/ui/components/actual_end_time_selector.dart';
 import 'package:fasting_app/ui/components/active_fasting_status.dart';
 import 'package:fasting_app/ui/components/fasting_plan_selector.dart';
@@ -32,7 +33,6 @@ class LocalFastingStatusSection extends StatefulWidget {
 class _LocalFastingStatusSectionState extends State<LocalFastingStatusSection> {
   FastingPlan _selectedPlan = FastingPlan.sixteenHours;
   DateTime? _selectedStartTime;
-  DateTime? _correctedActualEndTime;
   late final FastingTracker _tracker;
   late final Timer _statusTicker;
   String? _errorMessage;
@@ -65,33 +65,8 @@ class _LocalFastingStatusSectionState extends State<LocalFastingStatusSection> {
       return ActiveFastingStatus(
         session: activeSession,
         currentTime: widget.nowUtc(),
-        selectedActualEndTime: _correctedActualEndTime ?? widget.nowUtc(),
-        onActualEndTimeChanged: (actualEndTime) {
-          setState(() {
-            _correctedActualEndTime = actualEndTime;
-            _errorMessage = null;
-          });
-        },
-        onEndPressed: () {
-          setState(() {
-            final actualEndTime = _correctedActualEndTime ?? widget.nowUtc();
-            if (!actualEndTime.isAfter(activeSession.startTime)) {
-              _errorMessage = 'Actual end time must be after the start time';
-              return;
-            }
-
-            try {
-              _tracker.end(actualEndTime: actualEndTime);
-              _selectedStartTime = widget.nowUtc();
-              _correctedActualEndTime = null;
-              _errorMessage = null;
-            } on ArgumentError {
-              _errorMessage = 'Actual end time cannot be in the future';
-            }
-          });
-        },
+        onEndPressed: () => _showEndFastingSessionSheet(activeSession),
         errorMessage: _errorMessage,
-        selectActualEndTime: widget.selectActualEndTime,
       );
     }
 
@@ -140,7 +115,6 @@ class _LocalFastingStatusSectionState extends State<LocalFastingStatusSection> {
                 );
                 _errorMessage = null;
                 _latestSessionErrorMessage = null;
-                _correctedActualEndTime = null;
               } on ArgumentError {
                 _errorMessage = 'Start time cannot be in the future';
               }
@@ -186,6 +160,182 @@ class _LocalFastingStatusSectionState extends State<LocalFastingStatusSection> {
           },
           latestSessionErrorMessage: _latestSessionErrorMessage,
           selectActualEndTime: widget.selectActualEndTime,
+        ),
+      ],
+    );
+  }
+
+  Future<void> _showEndFastingSessionSheet(FastingSession session) async {
+    final selectedActualEndTime = await showModalBottomSheet<DateTime>(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => _EndFastingSessionSheet(
+        session: session,
+        initialActualEndTime: widget.nowUtc(),
+        selectActualEndTime: widget.selectActualEndTime,
+      ),
+    );
+
+    if (!mounted || selectedActualEndTime == null) {
+      return;
+    }
+
+    setState(() {
+      if (!selectedActualEndTime.isAfter(session.startTime)) {
+        _errorMessage = 'Actual end time must be after the start time';
+        return;
+      }
+
+      try {
+        _tracker.end(actualEndTime: selectedActualEndTime);
+        _selectedStartTime = widget.nowUtc();
+        _errorMessage = null;
+      } on ArgumentError {
+        _errorMessage = 'Actual end time cannot be in the future';
+      }
+    });
+  }
+}
+
+class _EndFastingSessionSheet extends StatefulWidget {
+  const _EndFastingSessionSheet({
+    required this.session,
+    required this.initialActualEndTime,
+    this.selectActualEndTime,
+  });
+
+  final FastingSession session;
+  final DateTime initialActualEndTime;
+  final ActualEndTimePicker? selectActualEndTime;
+
+  @override
+  State<_EndFastingSessionSheet> createState() =>
+      _EndFastingSessionSheetState();
+}
+
+class _EndFastingSessionSheetState extends State<_EndFastingSessionSheet> {
+  late DateTime _selectedActualEndTime;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedActualEndTime = widget.initialActualEndTime;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final preview = _previewFor(_selectedActualEndTime);
+
+    return SafeArea(
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(
+          24,
+          24,
+          24,
+          24 + MediaQuery.viewInsetsOf(context).bottom,
+        ),
+        child: Column(
+          key: const ValueKey('endFastingSessionSheet'),
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('End Fasting Session?', style: theme.textTheme.titleLarge),
+            const SizedBox(height: 16),
+            ActualEndTimeSelector(
+              selectedActualEndTime: _selectedActualEndTime,
+              onChanged: (actualEndTime) {
+                setState(() {
+                  _selectedActualEndTime = actualEndTime;
+                });
+              },
+              selectActualEndTime: widget.selectActualEndTime,
+            ),
+            const SizedBox(height: 16),
+            _PreviewRow(
+              label: 'Total Fasting Time',
+              value: preview == null
+                  ? 'Select a time after the start time'
+                  : _formatDuration(preview.actualDuration!),
+            ),
+            const SizedBox(height: 8),
+            _PreviewRow(
+              label: 'Fasting Result',
+              value: preview == null
+                  ? 'Unavailable'
+                  : _formatResult(preview.result!),
+            ),
+            const SizedBox(height: 24),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Keep fasting'),
+                ),
+                const SizedBox(width: 12),
+                FilledButton(
+                  key: const ValueKey('confirmEndFastingSessionButton'),
+                  onPressed: () =>
+                      Navigator.of(context).pop(_selectedActualEndTime),
+                  child: const Text('End fast'),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  FastingSession? _previewFor(DateTime actualEndTime) {
+    if (!actualEndTime.isAfter(widget.session.startTime)) {
+      return null;
+    }
+
+    return widget.session.end(actualEndTime: actualEndTime);
+  }
+
+  String _formatResult(FastingResult result) {
+    return switch (result) {
+      FastingResult.completed => 'Completed',
+      FastingResult.endedEarly => 'Ended Early',
+    };
+  }
+
+  String _formatDuration(Duration duration) {
+    final hours = duration.inHours;
+    final minutes = duration.inMinutes.remainder(60);
+
+    if (hours == 0) {
+      return '${minutes}m';
+    }
+
+    return '${hours}h ${minutes}m';
+  }
+}
+
+class _PreviewRow extends StatelessWidget {
+  const _PreviewRow({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(child: Text(label, style: theme.textTheme.labelLarge)),
+        const SizedBox(width: 12),
+        Flexible(
+          child: Text(
+            value,
+            textAlign: TextAlign.end,
+            style: theme.textTheme.bodyMedium,
+          ),
         ),
       ],
     );

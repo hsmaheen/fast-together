@@ -29,7 +29,7 @@ void main() {
         expect(find.text('Fasting'), findsOneWidget);
 
         now = DateTime.utc(2026, 6, 22, 1);
-        await _tapByKey(tester, const ValueKey('endFastingSessionButton'));
+        await _endFastingSession(tester);
 
         expect(find.text('Not Fasting'), findsOneWidget);
         expect(
@@ -45,7 +45,7 @@ void main() {
         );
 
         now = DateTime.utc(2026, 6, 22, 11);
-        await _tapByKey(tester, const ValueKey('endFastingSessionButton'));
+        await _endFastingSession(tester);
 
         expect(find.text('Not Fasting'), findsOneWidget);
         expect(
@@ -155,5 +155,14 @@ Future<void> _tapByKey(WidgetTester tester, Key key) async {
   final finder = find.byKey(key);
   await tester.ensureVisible(finder);
   await tester.tap(finder);
+  await tester.pumpAndSettle();
+}
+
+Future<void> _endFastingSession(WidgetTester tester) async {
+  await _tapByKey(tester, const ValueKey('endFastingSessionButton'));
+  expect(find.byKey(const ValueKey('endFastingSessionSheet')), findsOneWidget);
+  await tester.tap(
+    find.byKey(const ValueKey('confirmEndFastingSessionButton')),
+  );
   await tester.pumpAndSettle();
 }
