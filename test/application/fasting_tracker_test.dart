@@ -81,6 +81,28 @@ void main() {
       expect(tracker.latestSession?.actualEndTime, actualEndTime);
     });
 
+    test('exposes recent ended Fasting Sessions newest-first', () {
+      final tracker = trackerAfterTestSessions();
+      tracker.start(
+        startTime: DateTime.utc(2026, 6, 20, 8),
+        plan: FastingPlan.sixteenHours,
+      );
+      final olderEndTime = DateTime.utc(2026, 6, 21, 1);
+      tracker.end(actualEndTime: olderEndTime);
+      tracker.start(
+        startTime: DateTime.utc(2026, 6, 21, 8),
+        plan: FastingPlan.sixteenHours,
+      );
+      final newerEndTime = DateTime.utc(2026, 6, 22, 1);
+
+      tracker.end(actualEndTime: newerEndTime);
+
+      expect(
+        tracker.recentEndedSessions.map((session) => session.actualEndTime),
+        [newerEndTime, olderEndTime],
+      );
+    });
+
     test(
       'exposes active and latest Fasting Sessions separately after ending',
       () {
@@ -144,6 +166,29 @@ void main() {
       expect(tracker.status, FastingStatus.notFasting);
     });
 
+    test('deleting the latest ended Fasting Session keeps older history', () {
+      final tracker = trackerAfterTestSessions();
+      tracker.start(
+        startTime: DateTime.utc(2026, 6, 20, 8),
+        plan: FastingPlan.sixteenHours,
+      );
+      final olderEndTime = DateTime.utc(2026, 6, 21, 1);
+      tracker.end(actualEndTime: olderEndTime);
+      tracker.start(
+        startTime: DateTime.utc(2026, 6, 21, 8),
+        plan: FastingPlan.sixteenHours,
+      );
+      tracker.end(actualEndTime: DateTime.utc(2026, 6, 22, 1));
+
+      tracker.deleteLatestEndedSession();
+
+      expect(tracker.latestSession?.actualEndTime, olderEndTime);
+      expect(
+        tracker.recentEndedSessions.map((session) => session.actualEndTime),
+        [olderEndTime],
+      );
+    });
+
     test('does not delete an active Fasting Session', () {
       final tracker = trackerAfterTestSessions();
       final startTime = DateTime.utc(2026, 6, 21, 8);
@@ -172,6 +217,32 @@ void main() {
         DateTime.utc(2026, 6, 22, 0, 30),
       );
     });
+
+    test(
+      'correcting the latest ended Fasting Session updates recent history',
+      () {
+        final tracker = trackerAfterTestSessions();
+        tracker.start(
+          startTime: DateTime.utc(2026, 6, 20, 8),
+          plan: FastingPlan.sixteenHours,
+        );
+        final olderEndTime = DateTime.utc(2026, 6, 21, 1);
+        tracker.end(actualEndTime: olderEndTime);
+        tracker.start(
+          startTime: DateTime.utc(2026, 6, 21, 8),
+          plan: FastingPlan.sixteenHours,
+        );
+        tracker.end(actualEndTime: DateTime.utc(2026, 6, 22, 1, 30));
+        final correctedActualEndTime = DateTime.utc(2026, 6, 22, 0, 30);
+
+        tracker.correctActualEndTime(actualEndTime: correctedActualEndTime);
+
+        expect(
+          tracker.recentEndedSessions.map((session) => session.actualEndTime),
+          [correctedActualEndTime, olderEndTime],
+        );
+      },
+    );
 
     test('does not correct to a future actual end time', () {
       final tracker = FastingTracker(

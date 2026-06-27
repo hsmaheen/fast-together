@@ -8,18 +8,15 @@ class FastingTracker {
     : _nowUtc = nowUtc ?? (() => DateTime.now().toUtc());
 
   final DateTime Function() _nowUtc;
-  FastingSession? _currentSession;
+  FastingSession? _activeSession;
+  final List<FastingSession> _recentEndedSessions = [];
 
-  FastingSession? get latestSession => _currentSession;
+  FastingSession? get latestSession => _activeSession ?? _latestEndedSession;
 
-  FastingSession? get activeSession {
-    final session = _currentSession;
-    if (session == null || !session.isActive) {
-      return null;
-    }
+  List<FastingSession> get recentEndedSessions =>
+      List.unmodifiable(_recentEndedSessions);
 
-    return session;
-  }
+  FastingSession? get activeSession => _activeSession;
 
   FastingStatus get status {
     if (activeSession != null) {
@@ -35,21 +32,22 @@ class FastingTracker {
     }
 
     _requireNotFuture(startTime, 'startTime', _nowUtc());
-    _currentSession = FastingSession.start(startTime: startTime, plan: plan);
+    _activeSession = FastingSession.start(startTime: startTime, plan: plan);
   }
 
   void end({required DateTime actualEndTime}) {
-    final session = _currentSession;
+    final session = _activeSession;
     if (session == null || !session.isActive) {
       throw StateError('Cannot end while Not Fasting');
     }
 
     _requireNotFuture(actualEndTime, 'actualEndTime', _nowUtc());
-    _currentSession = session.end(actualEndTime: actualEndTime);
+    _activeSession = null;
+    _recentEndedSessions.insert(0, session.end(actualEndTime: actualEndTime));
   }
 
   void correctActualEndTime({required DateTime actualEndTime}) {
-    final session = latestSession;
+    final session = _latestEndedSession;
     if (session == null) {
       throw StateError(
         'Cannot correct actualEndTime without a Fasting Session',
@@ -57,19 +55,21 @@ class FastingTracker {
     }
 
     _requireNotFuture(actualEndTime, 'actualEndTime', _nowUtc());
-    _currentSession = session.correctActualEndTime(
+    _recentEndedSessions[0] = session.correctActualEndTime(
       actualEndTime: actualEndTime,
     );
   }
 
   void deleteLatestEndedSession() {
-    final session = latestSession;
-    if (session == null || session.isActive) {
+    if (_latestEndedSession == null) {
       throw StateError('Cannot delete without an ended Fasting Session');
     }
 
-    _currentSession = null;
+    _recentEndedSessions.removeAt(0);
   }
+
+  FastingSession? get _latestEndedSession =>
+      _recentEndedSessions.isEmpty ? null : _recentEndedSessions.first;
 }
 
 void _requireNotFuture(DateTime time, String name, DateTime nowUtc) {
