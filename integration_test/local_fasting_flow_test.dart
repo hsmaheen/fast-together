@@ -122,6 +122,32 @@ void main() {
       expect(find.byKey(const ValueKey('activeFastingStatus')), findsOneWidget);
       expect(find.text('36h 0m'), findsOneWidget);
     });
+
+    testWidgets('starts a Fasting Session from a corrected start time', (
+      tester,
+    ) async {
+      final now = DateTime.utc(2026, 6, 21, 8);
+      final correctedStartTime = DateTime.utc(2026, 6, 21, 4);
+
+      await tester.pumpWidget(
+        FastingApp(
+          nowUtc: () => now,
+          selectStartTime: (_, _) async => correctedStartTime,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Edit'));
+      await tester.pumpAndSettle();
+      await _tapByKey(tester, const ValueKey('startFastingSessionButton'));
+
+      expect(find.byKey(const ValueKey('activeFastingStatus')), findsOneWidget);
+      expect(find.text('Fasting'), findsOneWidget);
+      expect(find.text('Elapsed'), findsOneWidget);
+      expect(find.text('4h 0m'), findsOneWidget);
+      expect(find.text('Remaining'), findsOneWidget);
+      expect(find.text('12h 0m'), findsOneWidget);
+    });
   });
 }
 
