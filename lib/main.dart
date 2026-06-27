@@ -1,4 +1,7 @@
+import 'package:fasting_app/application/fasting_tracker.dart';
+import 'package:fasting_app/ui/components/actual_end_time_selector.dart';
 import 'package:fasting_app/ui/components/local_fasting_status_section.dart';
+import 'package:fasting_app/ui/components/start_time_selector.dart';
 import 'package:flutter/material.dart';
 
 void main() {
@@ -6,7 +9,18 @@ void main() {
 }
 
 class FastingApp extends StatelessWidget {
-  const FastingApp({super.key});
+  const FastingApp({
+    this.nowUtc,
+    this.tracker,
+    this.selectStartTime,
+    this.selectActualEndTime,
+    super.key,
+  });
+
+  final DateTime Function()? nowUtc;
+  final FastingTracker? tracker;
+  final StartTimePicker? selectStartTime;
+  final ActualEndTimePicker? selectActualEndTime;
 
   static const _seedColor = Color(0xFFB58C52);
 
@@ -22,13 +36,29 @@ class FastingApp extends StatelessWidget {
         colorScheme: colorScheme,
         scaffoldBackgroundColor: colorScheme.surface,
       ),
-      home: const FastingHomePage(),
+      home: FastingHomePage(
+        nowUtc: nowUtc,
+        tracker: tracker,
+        selectStartTime: selectStartTime,
+        selectActualEndTime: selectActualEndTime,
+      ),
     );
   }
 }
 
 class FastingHomePage extends StatelessWidget {
-  const FastingHomePage({super.key});
+  const FastingHomePage({
+    this.nowUtc,
+    this.tracker,
+    this.selectStartTime,
+    this.selectActualEndTime,
+    super.key,
+  });
+
+  final DateTime Function()? nowUtc;
+  final FastingTracker? tracker;
+  final StartTimePicker? selectStartTime;
+  final ActualEndTimePicker? selectActualEndTime;
 
   @override
   Widget build(BuildContext context) {
@@ -50,14 +80,16 @@ class FastingHomePage extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: theme.colorScheme.surfaceContainerLowest,
                   borderRadius: BorderRadius.circular(18),
-                  border: Border.all(
-                    color: theme.colorScheme.outlineVariant,
-                  ),
+                  border: Border.all(color: theme.colorScheme.outlineVariant),
                 ),
                 child: Padding(
                   padding: const EdgeInsets.all(24),
                   child: LocalFastingStatusSection(
-                    nowUtc: () => DateTime.now().toUtc(),
+                    key: const ValueKey('localFastingStatusSection'),
+                    nowUtc: nowUtc ?? () => DateTime.now().toUtc(),
+                    tracker: tracker,
+                    selectStartTime: selectStartTime,
+                    selectActualEndTime: selectActualEndTime,
                   ),
                 ),
               ),

@@ -43,6 +43,7 @@ class _FastingPlanSelectorState extends State<FastingPlanSelector> {
           children: [
             for (final plan in FastingPlanSelector._presetPlans)
               ChoiceChip(
+                key: ValueKey('fastingPlanChip_${plan.duration.inHours}'),
                 label: Text('${plan.duration.inHours}h'),
                 selected: identical(plan, widget.selectedPlan),
                 onSelected: (_) {
@@ -53,6 +54,7 @@ class _FastingPlanSelectorState extends State<FastingPlanSelector> {
                 },
               ),
             ChoiceChip(
+              key: const ValueKey('fastingPlanCustomChip'),
               label: const Text('Custom'),
               selected: isCustomPlan,
               onSelected: (_) {
@@ -73,6 +75,7 @@ class _FastingPlanSelectorState extends State<FastingPlanSelector> {
           SizedBox(
             width: 160,
             child: TextFormField(
+              key: const ValueKey('customPlanHoursField'),
               initialValue: widget.selectedPlan.duration.inHours.toString(),
               decoration: InputDecoration(
                 labelText: 'Custom Hours',
