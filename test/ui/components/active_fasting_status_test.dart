@@ -1,7 +1,6 @@
 import 'package:fasting_app/domain/fasting_plan.dart';
 import 'package:fasting_app/domain/fasting_session.dart';
 import 'package:fasting_app/ui/components/active_fasting_status.dart';
-import 'package:fasting_app/ui/components/actual_end_time_selector.dart';
 import 'package:fasting_app/ui/components/fasting_progress_ring.dart';
 import 'package:fasting_app/ui/components/fasting_time_summary.dart';
 import 'package:flutter/material.dart';
@@ -22,8 +21,6 @@ void main() {
           body: ActiveFastingStatus(
             session: session,
             currentTime: DateTime.utc(2026, 6, 21, 4, 15),
-            selectedActualEndTime: DateTime.utc(2026, 6, 21, 4, 15),
-            onActualEndTimeChanged: (_) {},
             onEndPressed: () {},
           ),
         ),
@@ -35,7 +32,7 @@ void main() {
     expect(find.text('4h 15m'), findsOneWidget);
     expect(find.text('Remaining'), findsOneWidget);
     expect(find.text('11h 45m'), findsOneWidget);
-    expect(find.text('Actual End Time'), findsOneWidget);
+    expect(find.text('Actual End Time'), findsNothing);
   });
 
   testWidgets('includes reviewed timing and progress components', (
@@ -52,8 +49,6 @@ void main() {
           body: ActiveFastingStatus(
             session: session,
             currentTime: DateTime.utc(2026, 6, 21, 8),
-            selectedActualEndTime: DateTime.utc(2026, 6, 21, 8),
-            onActualEndTimeChanged: (_) {},
             onEndPressed: () {},
           ),
         ),
@@ -62,7 +57,6 @@ void main() {
 
     expect(find.byType(FastingProgressRing), findsOneWidget);
     expect(find.byType(FastingTimeSummary), findsOneWidget);
-    expect(find.byType(ActualEndTimeSelector), findsOneWidget);
   });
 
   testWidgets(
@@ -79,8 +73,6 @@ void main() {
             body: ActiveFastingStatus(
               session: session,
               currentTime: DateTime.utc(2026, 6, 21, 4, 15),
-              selectedActualEndTime: DateTime.utc(2026, 6, 21, 4, 15),
-              onActualEndTimeChanged: (_) {},
               onEndPressed: () {},
             ),
           ),
@@ -120,8 +112,6 @@ void main() {
           body: ActiveFastingStatus(
             session: session,
             currentTime: DateTime.utc(2026, 6, 21, 8),
-            selectedActualEndTime: DateTime.utc(2026, 6, 21, 8),
-            onActualEndTimeChanged: (_) {},
             onEndPressed: () {
               endPressCount += 1;
             },
@@ -149,8 +139,6 @@ void main() {
           body: ActiveFastingStatus(
             session: session,
             currentTime: DateTime.utc(2026, 6, 21, 17, 30),
-            selectedActualEndTime: DateTime.utc(2026, 6, 21, 17, 30),
-            onActualEndTimeChanged: (_) {},
             onEndPressed: () {},
           ),
         ),
@@ -182,8 +170,6 @@ void main() {
                 child: ActiveFastingStatus(
                   session: session,
                   currentTime: DateTime.utc(2026, 6, 21, 4, 15),
-                  selectedActualEndTime: DateTime.utc(2026, 6, 21, 4, 15),
-                  onActualEndTimeChanged: (_) {},
                   onEndPressed: () {},
                 ),
               ),

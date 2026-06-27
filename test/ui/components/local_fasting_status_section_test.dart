@@ -197,14 +197,120 @@ void main() {
     await tester.pump();
 
     now = DateTime.utc(2026, 6, 21, 4, 16);
-    await tester.tap(find.text('End Fasting Session'));
-    await tester.pump();
+    await _confirmActiveFastingSessionEnd(tester);
 
     expect(find.text('Not Fasting'), findsOneWidget);
     expect(find.byType(ActiveFastingStatus), findsNothing);
     expect(find.byType(FastingPlanSelector), findsOneWidget);
     expect(find.byType(StartFastButton), findsOneWidget);
   });
+
+  testWidgets(
+    'opens end-fast sheet with current actual end time and keeps fasting on cancel',
+    (tester) async {
+      var now = DateTime.utc(2026, 6, 21, 4, 15);
+      final tracker = FastingTracker(nowUtc: () => now);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: LocalFastingStatusSection(
+              nowUtc: () => now,
+              tracker: tracker,
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Start 16h Fasting Session'));
+      await tester.pump();
+
+      now = DateTime.utc(2026, 6, 21, 5, 15);
+      await tester.tap(find.text('End Fasting Session'));
+      await tester.pumpAndSettle();
+
+      final localizations = MaterialLocalizations.of(
+        tester.element(find.byType(LocalFastingStatusSection)),
+      );
+
+      expect(
+        find.byKey(const ValueKey('endFastingSessionSheet')),
+        findsOneWidget,
+      );
+      expect(find.text('End Fasting Session?'), findsOneWidget);
+      expect(find.text('Actual End Time'), findsOneWidget);
+      expect(find.text(_formatDateAndTime(localizations, now)), findsOneWidget);
+      expect(find.text('Total Fasting Time'), findsOneWidget);
+      expect(find.text('1h 0m'), findsOneWidget);
+      expect(find.text('Fasting Result'), findsOneWidget);
+      expect(find.text('Ended Early'), findsOneWidget);
+
+      await tester.tap(find.text('Keep fasting'));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const ValueKey('endFastingSessionSheet')),
+        findsNothing,
+      );
+      expect(tracker.activeSession, isNotNull);
+      expect(find.byType(ActiveFastingStatus), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'updates end-fast sheet preview and confirms selected actual end time',
+    (tester) async {
+      var now = DateTime.utc(2026, 6, 21, 4, 15);
+      final tracker = FastingTracker(nowUtc: () => now);
+      final selectedActualEndTime = DateTime.utc(2026, 6, 21, 20, 15);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: LocalFastingStatusSection(
+              nowUtc: () => now,
+              tracker: tracker,
+              selectActualEndTime: (_, _) async => selectedActualEndTime,
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Start 16h Fasting Session'));
+      await tester.pump();
+
+      now = DateTime.utc(2026, 6, 21, 20, 30);
+      await tester.tap(find.text('End Fasting Session'));
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.descendant(
+          of: find.byKey(const ValueKey('endFastingSessionSheet')),
+          matching: find.text('Edit'),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Total Fasting Time'), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('endFastingSessionSheet')),
+          matching: find.text('16h 0m'),
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('Fasting Result'), findsOneWidget);
+      expect(find.text('Completed'), findsOneWidget);
+
+      await tester.tap(find.text('End fast'));
+      await tester.pumpAndSettle();
+
+      expect(tracker.activeSession, isNull);
+      expect(tracker.latestSession?.actualEndTime, selectedActualEndTime);
+      expect(tracker.latestSession?.actualDuration, const Duration(hours: 16));
+      expect(tracker.latestSession?.result, FastingResult.completed);
+      expect(find.text('Not Fasting'), findsOneWidget);
+    },
+  );
 
   testWidgets('records an ended Fasting Session through FastingTracker', (
     tester,
@@ -224,8 +330,7 @@ void main() {
     await tester.pump();
 
     now = DateTime.utc(2026, 6, 21, 5, 15);
-    await tester.tap(find.text('End Fasting Session'));
-    await tester.pump();
+    await _confirmActiveFastingSessionEnd(tester);
 
     expect(tracker.activeSession, isNull);
     expect(tracker.latestSession?.actualEndTime, now);
@@ -248,8 +353,7 @@ void main() {
     await tester.pump();
 
     now = DateTime.utc(2026, 6, 21, 5, 45);
-    await tester.tap(find.text('End Fasting Session'));
-    await tester.pump();
+    await _confirmActiveFastingSessionEnd(tester);
 
     final localizations = MaterialLocalizations.of(
       tester.element(find.byType(LocalFastingStatusSection)),
@@ -378,8 +482,7 @@ void main() {
     await tester.pump();
 
     now = DateTime.utc(2026, 6, 21, 5, 15);
-    await tester.tap(find.text('End Fasting Session'));
-    await tester.pump();
+    await _confirmActiveFastingSessionEnd(tester);
 
     expect(find.text('Ended Early'), findsOneWidget);
     expect(find.text('1h 0m'), findsOneWidget);
@@ -418,8 +521,7 @@ void main() {
     await tester.pump();
 
     now = DateTime.utc(2026, 6, 21, 5, 15);
-    await tester.tap(find.text('End Fasting Session'));
-    await tester.pump();
+    await _confirmActiveFastingSessionEnd(tester);
 
     expect(find.byType(LatestFastingSessionSummary), findsOneWidget);
 
@@ -459,8 +561,7 @@ void main() {
       await tester.pump();
 
       now = DateTime.utc(2026, 6, 21, 5, 15);
-      await tester.tap(find.text('End Fasting Session'));
-      await tester.pump();
+      await _confirmActiveFastingSessionEnd(tester);
 
       await tester.tap(
         find.descendant(
@@ -506,8 +607,7 @@ void main() {
     await tester.pump();
 
     now = DateTime.utc(2026, 6, 21, 5, 15);
-    await tester.tap(find.text('End Fasting Session'));
-    await tester.pump();
+    await _confirmActiveFastingSessionEnd(tester);
 
     await tester.tap(
       find.descendant(
@@ -552,10 +652,10 @@ void main() {
     await tester.pump();
 
     now = DateTime.utc(2026, 6, 21, 5, 15);
-    await tester.tap(find.text('Edit'));
-    await tester.pump();
-    await tester.tap(find.text('End Fasting Session'));
-    await tester.pump();
+    await _openEndFastingSessionSheet(tester);
+    await _editEndFastingSessionActualEndTime(tester);
+    await tester.tap(find.text('End fast'));
+    await tester.pumpAndSettle();
 
     expect(tracker.activeSession, isNull);
     expect(tracker.latestSession?.actualEndTime, correctedActualEndTime);
@@ -586,10 +686,10 @@ void main() {
     await tester.pump();
 
     now = DateTime.utc(2026, 6, 21, 5, 15);
-    await tester.tap(find.text('Edit'));
-    await tester.pump();
-    await tester.tap(find.text('End Fasting Session'));
-    await tester.pump();
+    await _openEndFastingSessionSheet(tester);
+    await _editEndFastingSessionActualEndTime(tester);
+    await tester.tap(find.text('End fast'));
+    await tester.pumpAndSettle();
 
     expect(tracker.activeSession, isNotNull);
     expect(find.text('Fasting'), findsOneWidget);
@@ -622,10 +722,10 @@ void main() {
     await tester.pump();
 
     now = DateTime.utc(2026, 6, 21, 5, 15);
-    await tester.tap(find.text('Edit'));
-    await tester.pump();
-    await tester.tap(find.text('End Fasting Session'));
-    await tester.pump();
+    await _openEndFastingSessionSheet(tester);
+    await _editEndFastingSessionActualEndTime(tester);
+    await tester.tap(find.text('End fast'));
+    await tester.pumpAndSettle();
 
     expect(tracker.activeSession, isNotNull);
     expect(find.text('Fasting'), findsOneWidget);
@@ -644,4 +744,25 @@ String _formatDateAndTime(MaterialLocalizations localizations, DateTime value) {
   );
 
   return '$date $time';
+}
+
+Future<void> _openEndFastingSessionSheet(WidgetTester tester) async {
+  await tester.tap(find.text('End Fasting Session'));
+  await tester.pumpAndSettle();
+}
+
+Future<void> _confirmActiveFastingSessionEnd(WidgetTester tester) async {
+  await _openEndFastingSessionSheet(tester);
+  await tester.tap(find.text('End fast'));
+  await tester.pumpAndSettle();
+}
+
+Future<void> _editEndFastingSessionActualEndTime(WidgetTester tester) async {
+  await tester.tap(
+    find.descendant(
+      of: find.byKey(const ValueKey('endFastingSessionSheet')),
+      matching: find.text('Edit'),
+    ),
+  );
+  await tester.pumpAndSettle();
 }
