@@ -32,6 +32,7 @@ class LatestFastingSessionSummary extends StatelessWidget {
     final localizations = MaterialLocalizations.of(context);
 
     return DecoratedBox(
+      key: const ValueKey('latestFastingSessionSummary'),
       decoration: BoxDecoration(
         color: theme.colorScheme.surfaceContainerLow,
         borderRadius: BorderRadius.circular(14),
@@ -54,6 +55,7 @@ class LatestFastingSessionSummary extends StatelessWidget {
                 if (onDeletePressed != null) ...[
                   const SizedBox(width: 8),
                   TextButton(
+                    key: const ValueKey('latestDeleteButton'),
                     onPressed: onDeletePressed,
                     style: TextButton.styleFrom(
                       foregroundColor: theme.colorScheme.error,

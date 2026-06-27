@@ -27,6 +27,7 @@ class RecentFastingSessionsList extends StatelessWidget {
 
     if (sessions.isEmpty) {
       return DecoratedBox(
+        key: const ValueKey('personalFastingActivityEmptyState'),
         decoration: BoxDecoration(
           color: theme.colorScheme.surfaceContainerLow,
           borderRadius: BorderRadius.circular(14),
@@ -54,6 +55,7 @@ class RecentFastingSessionsList extends StatelessWidget {
     }
 
     return Column(
+      key: const ValueKey('personalFastingActivityList'),
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -62,6 +64,7 @@ class RecentFastingSessionsList extends StatelessWidget {
         for (var index = 0; index < sessions.length; index += 1) ...[
           if (index == 0 && _showsLatestSessionActions)
             LatestFastingSessionSummary(
+              key: const ValueKey('recentFastingSessionItem_0'),
               session: sessions[index],
               onActualEndTimeChanged: onLatestActualEndTimeChanged,
               onDeletePressed: onLatestDeletePressed,
@@ -71,6 +74,7 @@ class RecentFastingSessionsList extends StatelessWidget {
           else
             _RecentFastingSessionItem(
               sessions[index],
+              key: ValueKey('recentFastingSessionItem_$index'),
               onDeletePressed: onSessionDeletePressed == null
                   ? null
                   : () => onSessionDeletePressed!(sessions[index]),
@@ -89,7 +93,11 @@ class RecentFastingSessionsList extends StatelessWidget {
 }
 
 class _RecentFastingSessionItem extends StatelessWidget {
-  const _RecentFastingSessionItem(this.session, {this.onDeletePressed});
+  const _RecentFastingSessionItem(
+    this.session, {
+    this.onDeletePressed,
+    super.key,
+  });
 
   final FastingSession session;
   final VoidCallback? onDeletePressed;

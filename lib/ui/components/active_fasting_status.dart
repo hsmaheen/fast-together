@@ -36,6 +36,7 @@ class ActiveFastingStatus extends StatelessWidget {
         : remaining;
 
     return Column(
+      key: const ValueKey('activeFastingStatus'),
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -77,6 +78,7 @@ class ActiveFastingStatus extends StatelessWidget {
         ],
         const SizedBox(height: 20),
         FilledButton(
+          key: const ValueKey('endFastingSessionButton'),
           onPressed: onEndPressed,
           child: const Text('End Fasting Session'),
         ),

@@ -72,3 +72,4 @@ Links: `PRODUCT.md`, `DESIGN.md`, `/Users/maheen/Downloads/material-theme.json`,
 - `0015` - Use earned Flutter layers
 - `0016` - Use application clock for Fasting Session action time validation
 - `0017` - Use privacy-first Firestore data model
+- `0018` - Use Flutter integration_test for E2E validation

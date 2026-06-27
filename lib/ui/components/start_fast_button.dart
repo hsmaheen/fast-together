@@ -14,6 +14,7 @@ class StartFastButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return FilledButton(
+      key: const ValueKey('startFastingSessionButton'),
       onPressed: onPressed,
       child: Text('Start ${selectedPlan.duration.inHours}h Fasting Session'),
     );
