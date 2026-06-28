@@ -85,6 +85,7 @@ class _LocalFastingStatusSectionState extends State<LocalFastingStatusSection> {
               ),
             ),
             TextButton(
+              key: const ValueKey('dailyFastingTotalsButton'),
               onPressed: _showCalendarDayFastingHistory,
               child: const Text('Daily totals'),
             ),
