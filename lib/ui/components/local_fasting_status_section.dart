@@ -43,7 +43,7 @@ class _LocalFastingStatusSectionState extends State<LocalFastingStatusSection> {
   void initState() {
     super.initState();
     _tracker = widget.tracker ?? FastingTracker(nowUtc: widget.nowUtc);
-    _statusTicker = Timer.periodic(const Duration(minutes: 1), (_) {
+    _statusTicker = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted && _tracker.activeSession != null) {
         setState(() {});
       }

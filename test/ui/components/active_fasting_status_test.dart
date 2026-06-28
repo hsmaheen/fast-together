@@ -31,7 +31,7 @@ void main() {
     expect(find.text('Elapsed'), findsOneWidget);
     expect(find.text('4h 15m'), findsOneWidget);
     expect(find.text('Remaining'), findsOneWidget);
-    expect(find.text('11h 45m'), findsOneWidget);
+    expect(find.text('11h 45m 0s'), findsOneWidget);
     expect(find.text('Actual End Time'), findsNothing);
   });
 
@@ -90,12 +90,66 @@ void main() {
       expect(
         find.descendant(
           of: find.byType(FastingProgressRing),
-          matching: find.text('11h 45m'),
+          matching: find.text('11h 45m 0s'),
         ),
         findsOneWidget,
       );
     },
   );
+
+  testWidgets('shows seconds in the active hero timer', (tester) async {
+    final session = FastingSession.start(
+      startTime: DateTime.utc(2026, 6, 21),
+      plan: FastingPlan.sixteenHours,
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: ActiveFastingStatus(
+            session: session,
+            currentTime: DateTime.utc(2026, 6, 21, 4, 15, 30),
+            onEndPressed: () {},
+          ),
+        ),
+      ),
+    );
+
+    expect(
+      find.descendant(
+        of: find.byType(FastingProgressRing),
+        matching: find.text('11h 44m 30s'),
+      ),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('keeps over-24-hour hero time readable', (tester) async {
+    final session = FastingSession.start(
+      startTime: DateTime.utc(2026, 6, 21),
+      plan: FastingPlan.customHours(48),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: ActiveFastingStatus(
+            session: session,
+            currentTime: DateTime.utc(2026, 6, 21, 12, 0, 30),
+            onEndPressed: () {},
+          ),
+        ),
+      ),
+    );
+
+    expect(
+      find.descendant(
+        of: find.byType(FastingProgressRing),
+        matching: find.text('35h 59m 30s'),
+      ),
+      findsOneWidget,
+    );
+  });
 
   testWidgets('calls onEndPressed when the end action is tapped', (
     tester,
@@ -147,7 +201,7 @@ void main() {
 
     expect(find.text('Remaining'), findsNothing);
     expect(find.text('Over Target'), findsOneWidget);
-    expect(find.text('1h 30m'), findsOneWidget);
+    expect(find.text('1h 30m 0s'), findsOneWidget);
   });
 
   testWidgets('fits narrow screens with large text', (tester) async {

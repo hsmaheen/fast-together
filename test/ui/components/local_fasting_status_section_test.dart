@@ -72,7 +72,7 @@ void main() {
     expect(find.byType(ActiveFastingStatus), findsOneWidget);
     expect(find.text('Fasting'), findsOneWidget);
     expect(find.text('Remaining'), findsOneWidget);
-    expect(find.text('16h 0m'), findsOneWidget);
+    expect(find.text('16h 0m 0s'), findsOneWidget);
   });
 
   testWidgets('starts a Fasting Session from a custom Fasting Plan', (
@@ -107,7 +107,7 @@ void main() {
       tracker.activeSession?.targetEndTime,
       DateTime.utc(2026, 6, 22, 16, 15),
     );
-    expect(find.text('36h 0m'), findsOneWidget);
+    expect(find.text('36h 0m 0s'), findsOneWidget);
   });
 
   testWidgets('updates active Fasting Status as time passes', (tester) async {
@@ -122,7 +122,7 @@ void main() {
     await tester.tap(find.text('Start 16h Fasting Session'));
     await tester.pump();
 
-    expect(find.text('16h 0m'), findsOneWidget);
+    expect(find.text('16h 0m 0s'), findsOneWidget);
 
     now = DateTime.utc(2026, 6, 21, 4, 16);
     await tester.pump(const Duration(minutes: 1));
@@ -130,7 +130,29 @@ void main() {
     expect(find.text('Elapsed'), findsOneWidget);
     expect(find.text('1m'), findsOneWidget);
     expect(find.text('Remaining'), findsOneWidget);
-    expect(find.text('15h 59m'), findsOneWidget);
+    expect(find.text('15h 59m 0s'), findsOneWidget);
+  });
+
+  testWidgets('ticks active hero seconds as the injected clock advances', (
+    tester,
+  ) async {
+    var now = DateTime.utc(2026, 6, 21, 4, 15);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(body: LocalFastingStatusSection(nowUtc: () => now)),
+      ),
+    );
+
+    await tester.tap(find.text('Start 16h Fasting Session'));
+    await tester.pump();
+
+    expect(find.text('16h 0m 0s'), findsOneWidget);
+
+    now = DateTime.utc(2026, 6, 21, 4, 15, 1);
+    await tester.pump(const Duration(seconds: 1));
+
+    expect(find.text('15h 59m 59s'), findsOneWidget);
   });
 
   testWidgets('starts a Fasting Session from the corrected start time', (
@@ -156,7 +178,7 @@ void main() {
     expect(find.text('Elapsed'), findsOneWidget);
     expect(find.text('4h 0m'), findsOneWidget);
     expect(find.text('Remaining'), findsOneWidget);
-    expect(find.text('12h 0m'), findsOneWidget);
+    expect(find.text('12h 0m 0s'), findsOneWidget);
   });
 
   testWidgets('does not start from a future corrected start time', (

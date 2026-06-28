@@ -170,7 +170,7 @@ void main() {
       await _tapByKey(tester, const ValueKey('startFastingSessionButton'));
 
       expect(find.byKey(const ValueKey('activeFastingStatus')), findsOneWidget);
-      expect(find.text('36h 0m'), findsOneWidget);
+      expect(find.text('36h 0m 0s'), findsOneWidget);
     });
 
     testWidgets(
@@ -190,7 +190,7 @@ void main() {
         );
         expect(find.text('Fasting'), findsOneWidget);
         expect(find.text('Remaining'), findsOneWidget);
-        expect(find.text('10h 0m'), findsOneWidget);
+        expect(find.text('10h 0m 0s'), findsOneWidget);
 
         now = DateTime.utc(2026, 6, 21, 19, 30);
         await tester.pump(const Duration(minutes: 1));
@@ -201,7 +201,7 @@ void main() {
         );
         expect(find.text('Not Fasting'), findsNothing);
         expect(find.text('Over Target'), findsOneWidget);
-        expect(find.text('1h 30m'), findsOneWidget);
+        expect(find.text('1h 30m 0s'), findsOneWidget);
         expect(find.text('End Fasting Session'), findsOneWidget);
 
         await _openEndFastingSessionSheet(tester);
@@ -267,7 +267,7 @@ void main() {
       expect(find.text('Elapsed'), findsOneWidget);
       expect(find.text('4h 0m'), findsOneWidget);
       expect(find.text('Remaining'), findsOneWidget);
-      expect(find.text('12h 0m'), findsOneWidget);
+      expect(find.text('12h 0m 0s'), findsOneWidget);
     });
 
     testWidgets(
