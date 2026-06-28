@@ -123,6 +123,77 @@ void main() {
       expect(find.text('36h 0m'), findsOneWidget);
     });
 
+    testWidgets(
+      'keeps an over-target Fasting Session active until the user ends it',
+      (tester) async {
+        var now = DateTime.utc(2026, 6, 21, 8);
+
+        await tester.pumpWidget(FastingApp(nowUtc: () => now));
+        await tester.pumpAndSettle();
+
+        await _tapByKey(tester, const ValueKey('fastingPlanChip_10'));
+        await _tapByKey(tester, const ValueKey('startFastingSessionButton'));
+
+        expect(
+          find.byKey(const ValueKey('activeFastingStatus')),
+          findsOneWidget,
+        );
+        expect(find.text('Fasting'), findsOneWidget);
+        expect(find.text('Remaining'), findsOneWidget);
+        expect(find.text('10h 0m'), findsOneWidget);
+
+        now = DateTime.utc(2026, 6, 21, 19, 30);
+        await tester.pump(const Duration(minutes: 1));
+
+        expect(
+          find.byKey(const ValueKey('activeFastingStatus')),
+          findsOneWidget,
+        );
+        expect(find.text('Not Fasting'), findsNothing);
+        expect(find.text('Over Target'), findsOneWidget);
+        expect(find.text('1h 30m'), findsOneWidget);
+        expect(find.text('End Fasting Session'), findsOneWidget);
+
+        await _openEndFastingSessionSheet(tester);
+
+        expect(
+          find.descendant(
+            of: find.byKey(const ValueKey('endFastingSessionSheet')),
+            matching: find.text('Total Fasting Time'),
+          ),
+          findsOneWidget,
+        );
+        expect(
+          find.descendant(
+            of: find.byKey(const ValueKey('endFastingSessionSheet')),
+            matching: find.text('11h 30m'),
+          ),
+          findsOneWidget,
+        );
+        expect(
+          find.descendant(
+            of: find.byKey(const ValueKey('endFastingSessionSheet')),
+            matching: find.text('Completed'),
+          ),
+          findsOneWidget,
+        );
+
+        await _tapByKey(
+          tester,
+          const ValueKey('confirmEndFastingSessionButton'),
+        );
+
+        expect(find.text('Not Fasting'), findsOneWidget);
+        expect(find.byKey(const ValueKey('activeFastingStatus')), findsNothing);
+        expect(
+          find.byKey(const ValueKey('recentFastingSessionItem_0')),
+          findsOneWidget,
+        );
+        expect(find.text('Completed'), findsOneWidget);
+        expect(find.text('11h 30m'), findsOneWidget);
+      },
+    );
+
     testWidgets('starts a Fasting Session from a corrected start time', (
       tester,
     ) async {
