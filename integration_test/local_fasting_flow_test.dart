@@ -1,4 +1,5 @@
 import 'package:fasting_app/main.dart';
+import 'package:fasting_app/ui/components/calendar_day_fasting_total.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
@@ -92,6 +93,55 @@ void main() {
         expect(find.text('Ended Early'), findsNothing);
       },
     );
+
+    testWidgets('shows daily totals from the user-facing calendar history', (
+      tester,
+    ) async {
+      var now = DateTime.utc(2026, 6, 21, 8);
+      final actualEndTime = DateTime.utc(2026, 6, 22);
+
+      await tester.pumpWidget(FastingApp(nowUtc: () => now));
+      await tester.pumpAndSettle();
+
+      await _tapByKey(tester, const ValueKey('startFastingSessionButton'));
+
+      now = actualEndTime;
+      await _endFastingSession(tester);
+
+      now = DateTime.utc(2026, 6, 23, 12);
+      await _tapByKey(tester, const ValueKey('dailyFastingTotalsButton'));
+
+      final localizations = MaterialLocalizations.of(
+        tester.element(find.byType(CalendarDayFastingTotal)),
+      );
+      final localEndTime = actualEndTime.toLocal();
+      final localEndDate = DateTime(
+        localEndTime.year,
+        localEndTime.month,
+        localEndTime.day,
+      );
+
+      expect(find.text('Calendar-day fasting total'), findsOneWidget);
+      expect(find.text('No fasting total for this day yet.'), findsOneWidget);
+
+      await tester.tap(find.text(localizations.formatShortDate(localEndDate)));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.descendant(
+          of: find.byType(CalendarDayFastingTotal),
+          matching: find.text(localizations.formatMediumDate(localEndDate)),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: find.byType(CalendarDayFastingTotal),
+          matching: find.text('16h 0m'),
+        ),
+        findsOneWidget,
+      );
+    });
 
     testWidgets('validates and starts a custom Fasting Plan', (tester) async {
       final now = DateTime.utc(2026, 6, 21, 8);
