@@ -33,6 +33,9 @@ migrate_working_dir/
 /build/
 /coverage/
 
+# Node/Firebase test dependencies
+node_modules/
+
 # Symbolication related
 app.*.symbols
 
@@ -50,3 +53,9 @@ app.*.map.json
 
 # Local simulator screenshots and review captures
 screenshots/
+
+# Firebase emulator runtime state
+.firebase/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
