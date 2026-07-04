@@ -3,9 +3,21 @@ import {
   assertSucceeds,
   initializeTestEnvironment,
 } from '@firebase/rules-unit-testing';
-import { Timestamp, doc, getDoc, setDoc } from 'firebase/firestore';
+import {
+  Timestamp,
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  setDoc,
+} from 'firebase/firestore';
+import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { after, before, beforeEach, test } from 'node:test';
+import {
+  loadEndedFastingSessions,
+  saveEndedFastingSession,
+} from './personal_fasting_activity_repository.mjs';
 
 let testEnv;
 
@@ -46,6 +58,41 @@ test('Personal Fasting Activity is readable and writable by its owner', async ()
   await assertSucceeds(getDoc(sessionRef));
 });
 
+test('signed-in owner can save and load an ended Fasting Session', async () => {
+  const ownerDb = testEnv.authenticatedContext('owner-user').firestore();
+  const endedSession = {
+    id: 'session-1',
+    startTime: new Date('2026-07-01T08:00:00Z'),
+    targetEndTime: new Date('2026-07-02T00:00:00Z'),
+    actualEndTime: new Date('2026-07-02T01:30:00Z'),
+    fastingResult: 'Completed',
+  };
+
+  await assertSucceeds(
+    saveEndedFastingSession({
+      db: ownerDb,
+      ownerUid: 'owner-user',
+      session: endedSession,
+    }),
+  );
+  const savedSession = await getDoc(
+    doc(ownerDb, 'appAccounts/owner-user/fastingSessions/session-1'),
+  );
+
+  await assertSucceeds(
+    loadEndedFastingSessions({ db: ownerDb, ownerUid: 'owner-user' }),
+  );
+  const loadedSessions = await loadEndedFastingSessions({
+    db: ownerDb,
+    ownerUid: 'owner-user',
+  });
+
+  assert.equal(savedSession.get('startedAt') instanceof Timestamp, true);
+  assert.equal(savedSession.get('targetEndedAt') instanceof Timestamp, true);
+  assert.equal(savedSession.get('actualEndedAt') instanceof Timestamp, true);
+  assert.deepStrictEqual(loadedSessions, [endedSession]);
+});
+
 test('Personal Fasting Activity rejects unauthenticated access', async () => {
   const guestDb = testEnv.unauthenticatedContext().firestore();
   const sessionRef = doc(
@@ -73,6 +120,9 @@ test('Personal Fasting Activity rejects a different signed-in user', async () =>
     setDoc(sessionRef, {
       startedAt: Timestamp.fromDate(new Date('2026-07-01T08:00:00Z')),
     }),
+  );
+  await assertFails(
+    getDocs(collection(otherUserDb, 'appAccounts/owner-user/fastingSessions')),
   );
 });
 
