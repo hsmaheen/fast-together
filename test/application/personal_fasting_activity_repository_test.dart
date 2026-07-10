@@ -52,6 +52,81 @@ void main() {
   });
 
   group('Personal Fasting Activity hydration', () {
+    test('moves an active Fasting Session to ended history by its ID', () {
+      final id = FastingSessionId('active-session');
+      final snapshot = PersonalFastingActivitySnapshot(
+        activeSession: FastingSession(
+          id: id,
+          startTime: DateTime.utc(2026, 6, 20, 8),
+          targetEndTime: DateTime.utc(2026, 6, 21),
+        ),
+      );
+      final endedSession = FastingSession(
+        id: id,
+        startTime: DateTime.utc(2026, 6, 20, 8),
+        targetEndTime: DateTime.utc(2026, 6, 21),
+        actualEndTime: DateTime.utc(2026, 6, 21, 1),
+      );
+
+      final updatedSnapshot = snapshot.upsert(endedSession);
+
+      expect(updatedSnapshot.activeSession, isNull);
+      expect(updatedSnapshot.endedSessions, [endedSession]);
+      expect(updatedSnapshot.endedSessions.single.id, id);
+    });
+
+    test('replaces an ended Fasting Session idempotently by its ID', () {
+      final id = FastingSessionId('ended-session');
+      final originalSession = FastingSession(
+        id: id,
+        startTime: DateTime.utc(2026, 6, 20, 8),
+        targetEndTime: DateTime.utc(2026, 6, 21),
+        actualEndTime: DateTime.utc(2026, 6, 21, 1),
+      );
+      final replacementSession = FastingSession(
+        id: id,
+        startTime: DateTime.utc(2026, 6, 20, 8),
+        targetEndTime: DateTime.utc(2026, 6, 21),
+        actualEndTime: DateTime.utc(2026, 6, 21, 1, 30),
+      );
+      final snapshot = PersonalFastingActivitySnapshot(
+        endedSessions: [originalSession],
+      );
+
+      final updatedSnapshot = snapshot.upsert(replacementSession);
+      final repeatedSnapshot = updatedSnapshot.upsert(replacementSession);
+
+      expect(updatedSnapshot.endedSessions, [replacementSession]);
+      expect(repeatedSnapshot.endedSessions, [replacementSession]);
+      expect(repeatedSnapshot.endedSessions.single.id, id);
+    });
+
+    test(
+      'deletes an ended Fasting Session while preserving the active session',
+      () {
+        final activeSession = FastingSession(
+          id: FastingSessionId('active-session'),
+          startTime: DateTime.utc(2026, 6, 21, 8),
+          targetEndTime: DateTime.utc(2026, 6, 22),
+        );
+        final endedSession = FastingSession(
+          id: FastingSessionId('ended-session'),
+          startTime: DateTime.utc(2026, 6, 20, 8),
+          targetEndTime: DateTime.utc(2026, 6, 21),
+          actualEndTime: DateTime.utc(2026, 6, 21, 1),
+        );
+        final snapshot = PersonalFastingActivitySnapshot(
+          activeSession: activeSession,
+          endedSessions: [endedSession],
+        );
+
+        final updatedSnapshot = snapshot.deleteEndedSession(endedSession.id);
+
+        expect(updatedSnapshot.activeSession, activeSession);
+        expect(updatedSnapshot.endedSessions, isEmpty);
+      },
+    );
+
     test('rejects deletion unless the matching Fasting Session is ended', () {
       final activeId = FastingSessionId('active-session');
       final endedId = FastingSessionId('ended-session');
