@@ -10,11 +10,101 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == uid;
     }
 
+    function isCircleMember(circleId) {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/fastingCircles/$(circleId)/members/$(request.auth.uid));
+    }
+
+    function isValidFastingCircle() {
+      return request.resource.data.keys().hasOnly([
+          'name',
+          'createdByUid',
+          'memberCount',
+          'createdAt',
+          'updatedAt',
+        ])
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.name.size() <= 80
+        && request.resource.data.createdByUid is string
+        && request.resource.data.memberCount is int
+        && request.resource.data.memberCount >= 1
+        && request.resource.data.memberCount <= 4
+        && request.resource.data.createdAt is timestamp
+        && request.resource.data.updatedAt is timestamp;
+    }
+
+    function usesCurrentActiveDevice(uid) {
+      return request.resource.data.activeDeviceId is string
+        && get(/databases/$(database)/documents/appAccounts/$(uid))
+          .data.activeDeviceId == request.resource.data.activeDeviceId;
+    }
+
+    function hasExactlySharedActivityFields(fields) {
+      return request.resource.data.keys().hasAll(fields)
+        && request.resource.data.keys().hasOnly(fields);
+    }
+
+    function isValidSharedFastingActivity(uid) {
+      return request.resource.data.updatedAt is timestamp
+        && request.resource.data.updatedAt == request.time
+        && usesCurrentActiveDevice(uid)
+        && (
+          (
+            request.resource.data.status == 'Not Fasting'
+            && hasExactlySharedActivityFields([
+              'status',
+              'activeDeviceId',
+              'updatedAt',
+            ])
+          )
+          ||
+          (
+            request.resource.data.status == 'Fasting'
+            && hasExactlySharedActivityFields([
+              'status',
+              'startedAt',
+              'targetEndedAt',
+              'activeDeviceId',
+              'updatedAt',
+            ])
+            && request.resource.data.startedAt is timestamp
+            && request.resource.data.targetEndedAt is timestamp
+            && request.resource.data.targetEndedAt
+              > request.resource.data.startedAt
+          )
+        );
+    }
+
     match /appAccounts/{uid} {
       allow read, write: if isOwner(uid);
 
       match /fastingSessions/{sessionId} {
         allow read, write: if isOwner(uid);
+      }
+
+      match /circleMembershipState/current {
+        allow read: if isOwner(uid);
+      }
+    }
+
+    match /fastingCircles/{circleId} {
+      allow read: if isCircleMember(circleId);
+      allow update: if isCircleMember(circleId)
+        && isValidFastingCircle()
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['name', 'updatedAt'])
+        && request.resource.data.updatedAt == request.time;
+
+      match /members/{uid} {
+        allow read: if isCircleMember(circleId);
+      }
+
+      match /sharedFastingActivity/{uid} {
+        allow read: if isCircleMember(circleId);
+        allow create, update: if isOwner(uid)
+          && isCircleMember(circleId)
+          && isValidSharedFastingActivity(uid);
       }
     }
 
