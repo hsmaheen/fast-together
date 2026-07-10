@@ -115,7 +115,8 @@ class FastingTracker {
 
     _requireNotFuture(actualEndTime, 'actualEndTime', _nowUtc());
     _activeSession = null;
-    _recentEndedSessions.insert(0, session.end(actualEndTime: actualEndTime));
+    _recentEndedSessions.add(session.end(actualEndTime: actualEndTime));
+    _orderEndedSessions();
   }
 
   void correctActualEndTime({required DateTime actualEndTime}) {
@@ -130,6 +131,7 @@ class FastingTracker {
     _recentEndedSessions[0] = session.correctActualEndTime(
       actualEndTime: actualEndTime,
     );
+    _orderEndedSessions();
   }
 
   void deleteLatestEndedSession() {
@@ -157,6 +159,15 @@ class FastingTracker {
 
   FastingSession? get _latestEndedSession =>
       _recentEndedSessions.isEmpty ? null : _recentEndedSessions.first;
+
+  void _orderEndedSessions() {
+    final orderedSessions = PersonalFastingActivitySnapshot(
+      endedSessions: _recentEndedSessions,
+    ).endedSessions;
+    _recentEndedSessions
+      ..clear()
+      ..addAll(orderedSessions);
+  }
 }
 
 void _requireNotFuture(DateTime time, String name, DateTime nowUtc) {

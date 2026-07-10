@@ -44,6 +44,10 @@ _Avoid_: Eating window, completed status
 A period of fasting started by a user, with a user-set start time, target end time, and optional actual end time. A Fasting Session remains active until the user ends it, even after the target end time passes, records actual duration with minute precision, allows actual end time correction after it ends, requires start and actual end times not to be in the future, requires the actual end time to be after the start time, cannot be deleted while active, and a user can have only one active Fasting Session at a time.
 _Avoid_: Timer, fast
 
+**FastingSessionId**:
+A stable, immutable identity for a Fasting Session that remains the same through ending, actual-end-time correction, and hydration.
+_Avoid_: Timestamp, list position, result
+
 **Fasting Result**:
 The derived outcome of an ended Fasting Session, either Completed when the actual end time is at or after the target end time, or Ended Early when the actual end time is before the target end time.
 _Avoid_: Success, failure

@@ -27,6 +27,14 @@ does not expose Firebase Auth, Firestore, `Timestamp`, or adapter-specific
 types. LIF-74 intentionally provides no repository adapter; a future
 in-memory or Firestore adapter will satisfy this seam.
 
+Repository writes are atomic per App Account. An active-session upsert replaces
+the active Fasting Session only when it has the same `FastingSessionId`; an
+active upsert with a different ID is rejected and leaves the snapshot unchanged.
+An ended-session upsert replaces the matching ended session or transitions the
+matching active session to ended. Deletion succeeds only for a matching ended
+Fasting Session; attempts to delete the active session or a missing ID are
+rejected. Each successful write returns the resulting validated snapshot.
+
 `FastingResult` remains derived from a Fasting Session's target and actual end
 times. It is not part of the snapshot or repository contract as persisted or
 trusted state.
@@ -40,4 +48,6 @@ trusted state.
 - A malformed persisted snapshot fails at hydration instead of producing
   ambiguous local Personal Fasting Activity.
 - An adapter must preserve the repository contract's ordering and idempotent
-  upsert semantics; it must not persist `FastingResult` as authoritative data.
+  upsert semantics, including atomic active-session conflict rejection and
+  ended-only deletion; it must not persist `FastingResult` as authoritative
+  data.

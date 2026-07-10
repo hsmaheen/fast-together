@@ -52,6 +52,55 @@ void main() {
   });
 
   group('Personal Fasting Activity hydration', () {
+    test('rejects deletion unless the matching Fasting Session is ended', () {
+      final activeId = FastingSessionId('active-session');
+      final endedId = FastingSessionId('ended-session');
+      final snapshot = PersonalFastingActivitySnapshot(
+        activeSession: FastingSession(
+          id: activeId,
+          startTime: DateTime.utc(2026, 6, 20, 8),
+          targetEndTime: DateTime.utc(2026, 6, 21),
+        ),
+        endedSessions: [
+          FastingSession(
+            id: endedId,
+            startTime: DateTime.utc(2026, 6, 19, 8),
+            targetEndTime: DateTime.utc(2026, 6, 20),
+            actualEndTime: DateTime.utc(2026, 6, 20, 1),
+          ),
+        ],
+      );
+
+      expect(() => snapshot.deleteEndedSession(activeId), throwsStateError);
+      expect(
+        () => snapshot.deleteEndedSession(FastingSessionId('missing-session')),
+        throwsStateError,
+      );
+      expect(snapshot.endedSessions.single.id, endedId);
+    });
+
+    test(
+      'rejects a second active Fasting Session upsert without changing state',
+      () {
+        final activeId = FastingSessionId('active-session');
+        final snapshot = PersonalFastingActivitySnapshot(
+          activeSession: FastingSession(
+            id: activeId,
+            startTime: DateTime.utc(2026, 6, 20, 8),
+            targetEndTime: DateTime.utc(2026, 6, 21),
+          ),
+        );
+        final attemptedSession = FastingSession(
+          id: FastingSessionId('second-active-session'),
+          startTime: DateTime.utc(2026, 6, 21, 8),
+          targetEndTime: DateTime.utc(2026, 6, 22),
+        );
+
+        expect(() => snapshot.upsert(attemptedSession), throwsStateError);
+        expect(snapshot.activeSession?.id, activeId);
+      },
+    );
+
     test('orders ended Fasting Sessions newest actual end time first', () {
       final olderSession = FastingSession(
         id: FastingSessionId('older-session'),

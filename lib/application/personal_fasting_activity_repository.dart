@@ -18,12 +18,22 @@ abstract interface class PersonalFastingActivityRepository {
   /// Loads the App Account's current Personal Fasting Activity snapshot.
   Future<PersonalFastingActivitySnapshot> loadSnapshot(AppAccountId accountId);
 
-  /// Replaces the session identified by [session.id]; repeating the same write
-  /// has the same effect as writing it once.
-  Future<void> upsert(AppAccountId accountId, FastingSession session);
+  /// Atomically applies [PersonalFastingActivitySnapshot.upsert] for the App
+  /// Account and returns the resulting snapshot. Repeating the same write has
+  /// the same effect as writing it once. It throws [StateError] when an active
+  /// Fasting Session has a different ID from the existing active session.
+  Future<PersonalFastingActivitySnapshot> upsert(
+    AppAccountId accountId,
+    FastingSession session,
+  );
 
-  /// Deletes an ended Fasting Session identified by [id].
-  Future<void> deleteEndedSession(AppAccountId accountId, FastingSessionId id);
+  /// Atomically applies [PersonalFastingActivitySnapshot.deleteEndedSession]
+  /// and returns the resulting snapshot. It throws [StateError] when [id]
+  /// identifies the active session or no ended Fasting Session.
+  Future<PersonalFastingActivitySnapshot> deleteEndedSession(
+    AppAccountId accountId,
+    FastingSessionId id,
+  );
 }
 
 /// A Personal Fasting Activity view with at most one active Fasting Session.
@@ -68,6 +78,48 @@ class PersonalFastingActivitySnapshot {
 
   final FastingSession? activeSession;
   late final List<FastingSession> endedSessions;
+
+  PersonalFastingActivitySnapshot upsert(FastingSession session) {
+    final currentActiveSession = activeSession;
+    if (session.isActive) {
+      if (currentActiveSession != null &&
+          currentActiveSession.id != session.id) {
+        throw StateError('Cannot upsert a second active Fasting Session');
+      }
+
+      return PersonalFastingActivitySnapshot(
+        activeSession: session,
+        endedSessions: endedSessions,
+      );
+    }
+
+    return PersonalFastingActivitySnapshot(
+      activeSession: currentActiveSession?.id == session.id
+          ? null
+          : currentActiveSession,
+      endedSessions: [
+        session,
+        ...endedSessions.where((existing) => existing.id != session.id),
+      ],
+    );
+  }
+
+  PersonalFastingActivitySnapshot deleteEndedSession(FastingSessionId id) {
+    if (activeSession?.id == id) {
+      throw StateError('Cannot delete an active Fasting Session');
+    }
+
+    if (!endedSessions.any((session) => session.id == id)) {
+      throw StateError('Cannot delete a missing ended Fasting Session');
+    }
+
+    return PersonalFastingActivitySnapshot(
+      activeSession: activeSession,
+      endedSessions: endedSessions
+          .where((session) => session.id != id)
+          .toList(),
+    );
+  }
 }
 
 List<FastingSession> _orderedEndedSessions(List<FastingSession> endedSessions) {
