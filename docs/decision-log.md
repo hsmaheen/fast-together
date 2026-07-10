@@ -53,6 +53,14 @@ Scope: Product
 Status: Accepted
 Links: `PRODUCT.md`, `DESIGN.md`, `/Users/maheen/Downloads/material-theme.json`, `/Users/maheen/Downloads/materialkolor-theme.zip`
 
+## 2026-07-11 - Keep FlutterFire bootstrap device-only and emulator-backed
+
+Decision: We will run the first FlutterFire App Account bootstrap only through a dedicated iOS Simulator or Android Emulator integration test, while ordinary app and local fasting test composition remains Firebase-free.
+Reason: This proves real Auth and owner-scoped Firestore integration without turning unfinished persistence or production sign-in into an application dependency.
+Scope: Process
+Status: Accepted
+Links: `docs/adr/0021-use-demo-only-flutterfire-emulator-bootstrap.md`, LIF-75
+
 ## ADR Index
 
 - `0001` - Model circle membership separately
@@ -75,3 +83,4 @@ Links: `PRODUCT.md`, `DESIGN.md`, `/Users/maheen/Downloads/material-theme.json`,
 - `0018` - Use Flutter integration_test for E2E validation
 - `0019` - Use trusted transactions for Circle Membership limits
 - `0020` - Use stable Fasting Session identity and Personal Fasting Activity repository seam
+- `0021` - Use demo-only FlutterFire emulator bootstrap
