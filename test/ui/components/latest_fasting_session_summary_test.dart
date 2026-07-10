@@ -1,14 +1,18 @@
 import 'package:fasting_app/domain/fasting_plan.dart';
 import 'package:fasting_app/domain/fasting_session.dart';
+import 'package:fasting_app/domain/fasting_session_id.dart';
 import 'package:fasting_app/ui/components/latest_fasting_session_summary.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+final _testSessionId = FastingSessionId('latest-summary-session');
 
 void main() {
   testWidgets('shows completed Fasting Result for a completed session', (
     tester,
   ) async {
     final session = FastingSession.start(
+      id: _testSessionId,
       startTime: DateTime.utc(2026, 6, 21, 4),
       plan: FastingPlan.sixteenHours,
     ).end(actualEndTime: DateTime.utc(2026, 6, 21, 20));
@@ -30,6 +34,7 @@ void main() {
   ) async {
     DateTime? changedActualEndTime;
     final session = FastingSession.start(
+      id: _testSessionId,
       startTime: DateTime.utc(2026, 6, 21, 4),
       plan: FastingPlan.sixteenHours,
     ).end(actualEndTime: DateTime.utc(2026, 6, 21, 5));
@@ -58,6 +63,7 @@ void main() {
 
   testWidgets('does not show active Fasting Session details', (tester) async {
     final session = FastingSession.start(
+      id: _testSessionId,
       startTime: DateTime.utc(2026, 6, 21, 4),
       plan: FastingPlan.sixteenHours,
     );
@@ -73,6 +79,7 @@ void main() {
 
   testWidgets('fits compact mobile width', (tester) async {
     final session = FastingSession.start(
+      id: _testSessionId,
       startTime: DateTime.utc(2026, 6, 21, 4),
       plan: FastingPlan.sixteenHours,
     ).end(actualEndTime: DateTime.utc(2026, 6, 21, 5, 30));

@@ -74,3 +74,4 @@ Links: `PRODUCT.md`, `DESIGN.md`, `/Users/maheen/Downloads/material-theme.json`,
 - `0017` - Use privacy-first Firestore data model
 - `0018` - Use Flutter integration_test for E2E validation
 - `0019` - Use trusted transactions for Circle Membership limits
+- `0020` - Use stable Fasting Session identity and Personal Fasting Activity repository seam
