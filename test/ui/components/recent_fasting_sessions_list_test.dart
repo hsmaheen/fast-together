@@ -1,8 +1,13 @@
 import 'package:fasting_app/domain/fasting_plan.dart';
 import 'package:fasting_app/domain/fasting_session.dart';
+import 'package:fasting_app/domain/fasting_session_id.dart';
 import 'package:fasting_app/ui/components/recent_fasting_sessions_list.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+final _testSessionId = FastingSessionId('recent-session');
+final _completedSessionId = FastingSessionId('completed-session');
+final _endedEarlySessionId = FastingSessionId('ended-early-session');
 
 void main() {
   testWidgets('shows Personal Fasting Activity empty state', (tester) async {
@@ -20,6 +25,7 @@ void main() {
     tester,
   ) async {
     final session = FastingSession.start(
+      id: _testSessionId,
       startTime: DateTime.utc(2026, 6, 21, 4),
       plan: FastingPlan.sixteenHours,
     ).end(actualEndTime: DateTime.utc(2026, 6, 21, 20, 30));
@@ -46,10 +52,12 @@ void main() {
     tester,
   ) async {
     final completedSession = FastingSession.start(
+      id: _completedSessionId,
       startTime: DateTime.utc(2026, 6, 21, 4),
       plan: FastingPlan.sixteenHours,
     ).end(actualEndTime: DateTime.utc(2026, 6, 21, 20));
     final endedEarlySession = FastingSession.start(
+      id: _endedEarlySessionId,
       startTime: DateTime.utc(2026, 6, 22, 4),
       plan: FastingPlan.sixteenHours,
     ).end(actualEndTime: DateTime.utc(2026, 6, 22, 18));

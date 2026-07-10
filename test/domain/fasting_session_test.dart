@@ -1,11 +1,50 @@
 import 'package:fasting_app/domain/fasting_plan.dart';
 import 'package:fasting_app/domain/fasting_session.dart';
+import 'package:fasting_app/domain/fasting_session_id.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+final _testSessionId = FastingSessionId('test-session');
 
 void main() {
   group('FastingSession', () {
+    test('rejects an empty ID', () {
+      expect(() => FastingSessionId(''), throwsArgumentError);
+    });
+
+    test('preserves its ID when it ends', () {
+      final id = FastingSessionId('session-1');
+      final session = FastingSession.start(
+        id: id,
+        startTime: DateTime.utc(2026, 6, 20, 8),
+        plan: FastingPlan.sixteenHours,
+      );
+
+      final endedSession = session.end(
+        actualEndTime: DateTime.utc(2026, 6, 21, 1),
+      );
+
+      expect(endedSession.id, id);
+    });
+
+    test('preserves its ID when its actual end time is corrected', () {
+      final id = FastingSessionId('session-1');
+      final endedSession = FastingSession(
+        id: id,
+        startTime: DateTime.utc(2026, 6, 20, 8),
+        targetEndTime: DateTime.utc(2026, 6, 21),
+        actualEndTime: DateTime.utc(2026, 6, 21, 1),
+      );
+
+      final correctedSession = endedSession.correctActualEndTime(
+        actualEndTime: DateTime.utc(2026, 6, 21, 0, 30),
+      );
+
+      expect(correctedSession.id, id);
+    });
+
     test('starts with a target end time derived from a Fasting Plan', () {
       final session = FastingSession.start(
+        id: _testSessionId,
         startTime: DateTime.utc(2026, 6, 20, 8),
         plan: FastingPlan.sixteenHours,
       );
@@ -15,6 +54,7 @@ void main() {
 
     test('starts as an active Fasting Session', () {
       final session = FastingSession.start(
+        id: _testSessionId,
         startTime: DateTime.utc(2026, 6, 20, 8),
         plan: FastingPlan.sixteenHours,
       );
@@ -25,6 +65,7 @@ void main() {
     test('does not start from a non-UTC start time', () {
       expect(
         () => FastingSession.start(
+          id: _testSessionId,
           startTime: DateTime(2026, 6, 20, 8),
           plan: FastingPlan.sixteenHours,
         ),
@@ -190,6 +231,7 @@ void main() {
     test('rejects a non-UTC start time', () {
       expect(
         () => FastingSession(
+          id: _testSessionId,
           startTime: DateTime(2026, 6, 20, 8),
           targetEndTime: DateTime.utc(2026, 6, 21),
         ),
@@ -200,6 +242,7 @@ void main() {
     test('rejects a non-UTC target end time', () {
       expect(
         () => FastingSession(
+          id: _testSessionId,
           startTime: DateTime.utc(2026, 6, 20, 8),
           targetEndTime: DateTime(2026, 6, 21),
         ),
@@ -211,7 +254,11 @@ void main() {
       final startTime = DateTime.utc(2026, 6, 20, 8);
 
       expect(
-        () => FastingSession(startTime: startTime, targetEndTime: startTime),
+        () => FastingSession(
+          id: _testSessionId,
+          startTime: startTime,
+          targetEndTime: startTime,
+        ),
         throwsArgumentError,
       );
     });
@@ -219,6 +266,7 @@ void main() {
     test('rejects a target end time before the start time', () {
       expect(
         () => FastingSession(
+          id: _testSessionId,
           startTime: DateTime.utc(2026, 6, 20, 8),
           targetEndTime: DateTime.utc(2026, 6, 20, 7, 59),
         ),
@@ -235,6 +283,7 @@ void main() {
     test('rejects a non-UTC actual end time', () {
       expect(
         () => FastingSession(
+          id: _testSessionId,
           startTime: DateTime.utc(2026, 6, 20, 8),
           targetEndTime: DateTime.utc(2026, 6, 21),
           actualEndTime: DateTime(2026, 6, 21, 1),
@@ -299,6 +348,7 @@ void main() {
 
     test('derives completed result when actual end reaches target end', () {
       final session = FastingSession(
+        id: _testSessionId,
         startTime: DateTime.utc(2026, 6, 20, 8),
         targetEndTime: DateTime.utc(2026, 6, 21),
         actualEndTime: DateTime.utc(2026, 6, 21),
@@ -309,6 +359,7 @@ void main() {
 
     test('derives ended-early result when actual end is before target end', () {
       final session = FastingSession(
+        id: _testSessionId,
         startTime: DateTime.utc(2026, 6, 20, 8),
         targetEndTime: DateTime.utc(2026, 6, 21),
         actualEndTime: DateTime.utc(2026, 6, 20, 23, 59),
@@ -323,6 +374,7 @@ FastingSession activeSession({DateTime? startTime, DateTime? targetEndTime}) {
   final resolvedStartTime = startTime ?? DateTime.utc(2026, 6, 20, 8);
 
   return FastingSession(
+    id: _testSessionId,
     startTime: resolvedStartTime,
     targetEndTime:
         targetEndTime ?? resolvedStartTime.add(const Duration(hours: 16)),
@@ -340,6 +392,7 @@ FastingSession endedSessionAfterTarget({
   );
 
   return FastingSession(
+    id: session.id,
     startTime: session.startTime,
     targetEndTime: session.targetEndTime,
     actualEndTime:
@@ -358,6 +411,7 @@ FastingSession endedSessionBeforeTarget({
   );
 
   return FastingSession(
+    id: session.id,
     startTime: session.startTime,
     targetEndTime: session.targetEndTime,
     actualEndTime:

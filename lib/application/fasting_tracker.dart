@@ -1,5 +1,9 @@
+import 'dart:math';
+
+import 'package:fasting_app/application/personal_fasting_activity_repository.dart';
 import 'package:fasting_app/domain/fasting_plan.dart';
 import 'package:fasting_app/domain/fasting_session.dart';
+import 'package:fasting_app/domain/fasting_session_id.dart';
 
 enum FastingStatus { fasting, notFasting }
 
@@ -21,12 +25,26 @@ class DailyFastingTotal {
 }
 
 class FastingTracker {
-  FastingTracker({DateTime Function()? nowUtc})
-    : _nowUtc = nowUtc ?? (() => DateTime.now().toUtc());
+  FastingTracker({
+    DateTime Function()? nowUtc,
+    FastingSessionId Function()? newSessionId,
+  }) : _nowUtc = nowUtc ?? (() => DateTime.now().toUtc()),
+       _newSessionId = newSessionId ?? _randomFastingSessionId,
+       _recentEndedSessions = [];
+
+  FastingTracker.fromSnapshot({
+    required PersonalFastingActivitySnapshot snapshot,
+    DateTime Function()? nowUtc,
+    FastingSessionId Function()? newSessionId,
+  }) : _nowUtc = nowUtc ?? (() => DateTime.now().toUtc()),
+       _newSessionId = newSessionId ?? _randomFastingSessionId,
+       _activeSession = snapshot.activeSession,
+       _recentEndedSessions = List.of(snapshot.endedSessions);
 
   final DateTime Function() _nowUtc;
+  final FastingSessionId Function() _newSessionId;
   FastingSession? _activeSession;
-  final List<FastingSession> _recentEndedSessions = [];
+  final List<FastingSession> _recentEndedSessions;
 
   FastingSession? get latestSession => _activeSession ?? _latestEndedSession;
 
@@ -78,7 +96,15 @@ class FastingTracker {
     }
 
     _requireNotFuture(startTime, 'startTime', _nowUtc());
-    _activeSession = FastingSession.start(startTime: startTime, plan: plan);
+    final id = _newSessionId();
+    if (_recentEndedSessions.any((session) => session.id == id)) {
+      throw StateError('Cannot start with a reused Fasting Session ID');
+    }
+    _activeSession = FastingSession.start(
+      id: id,
+      startTime: startTime,
+      plan: plan,
+    );
   }
 
   void end({required DateTime actualEndTime}) {
@@ -89,7 +115,8 @@ class FastingTracker {
 
     _requireNotFuture(actualEndTime, 'actualEndTime', _nowUtc());
     _activeSession = null;
-    _recentEndedSessions.insert(0, session.end(actualEndTime: actualEndTime));
+    _recentEndedSessions.add(session.end(actualEndTime: actualEndTime));
+    _orderEndedSessions();
   }
 
   void correctActualEndTime({required DateTime actualEndTime}) {
@@ -104,6 +131,7 @@ class FastingTracker {
     _recentEndedSessions[0] = session.correctActualEndTime(
       actualEndTime: actualEndTime,
     );
+    _orderEndedSessions();
   }
 
   void deleteLatestEndedSession() {
@@ -114,19 +142,32 @@ class FastingTracker {
     _recentEndedSessions.removeAt(0);
   }
 
-  void deleteEndedSession(FastingSession session) {
-    if (session.isActive) {
+  void deleteEndedSession(FastingSessionId id) {
+    if (_activeSession?.id == id) {
       throw StateError('Cannot delete an active Fasting Session');
     }
 
-    final wasDeleted = _recentEndedSessions.remove(session);
-    if (!wasDeleted) {
+    final sessionIndex = _recentEndedSessions.indexWhere(
+      (session) => session.id == id,
+    );
+    if (sessionIndex == -1) {
       throw StateError('Cannot delete a Fasting Session outside history');
     }
+
+    _recentEndedSessions.removeAt(sessionIndex);
   }
 
   FastingSession? get _latestEndedSession =>
       _recentEndedSessions.isEmpty ? null : _recentEndedSessions.first;
+
+  void _orderEndedSessions() {
+    final orderedSessions = PersonalFastingActivitySnapshot(
+      endedSessions: _recentEndedSessions,
+    ).endedSessions;
+    _recentEndedSessions
+      ..clear()
+      ..addAll(orderedSessions);
+  }
 }
 
 void _requireNotFuture(DateTime time, String name, DateTime nowUtc) {
@@ -137,4 +178,13 @@ void _requireNotFuture(DateTime time, String name, DateTime nowUtc) {
   if (time.isAfter(nowUtc)) {
     throw ArgumentError.value(time, name, 'must not be in the future');
   }
+}
+
+FastingSessionId _randomFastingSessionId() {
+  final random = Random.secure();
+  final value = List.generate(
+    16,
+    (_) => random.nextInt(256).toRadixString(16).padLeft(2, '0'),
+  ).join();
+  return FastingSessionId(value);
 }

@@ -1,16 +1,20 @@
 import 'package:fasting_app/domain/fasting_plan.dart';
 import 'package:fasting_app/domain/fasting_session.dart';
+import 'package:fasting_app/domain/fasting_session_id.dart';
 import 'package:fasting_app/ui/components/active_fasting_status.dart';
 import 'package:fasting_app/ui/components/fasting_progress_ring.dart';
 import 'package:fasting_app/ui/components/fasting_time_summary.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+final _testSessionId = FastingSessionId('active-status-session');
+
 void main() {
   testWidgets('shows active Fasting Status using Fasting Session data', (
     tester,
   ) async {
     final session = FastingSession.start(
+      id: _testSessionId,
       startTime: DateTime.utc(2026, 6, 21),
       plan: FastingPlan.sixteenHours,
     );
@@ -39,6 +43,7 @@ void main() {
     tester,
   ) async {
     final session = FastingSession.start(
+      id: _testSessionId,
       startTime: DateTime.utc(2026, 6, 21),
       plan: FastingPlan.sixteenHours,
     );
@@ -63,6 +68,7 @@ void main() {
     'presents remaining time as the hero timer in the progress ring',
     (tester) async {
       final session = FastingSession.start(
+        id: _testSessionId,
         startTime: DateTime.utc(2026, 6, 21),
         plan: FastingPlan.sixteenHours,
       );
@@ -99,6 +105,7 @@ void main() {
 
   testWidgets('shows seconds in the active hero timer', (tester) async {
     final session = FastingSession.start(
+      id: _testSessionId,
       startTime: DateTime.utc(2026, 6, 21),
       plan: FastingPlan.sixteenHours,
     );
@@ -126,6 +133,7 @@ void main() {
 
   testWidgets('keeps over-24-hour hero time readable', (tester) async {
     final session = FastingSession.start(
+      id: _testSessionId,
       startTime: DateTime.utc(2026, 6, 21),
       plan: FastingPlan.customHours(48),
     );
@@ -156,6 +164,7 @@ void main() {
   ) async {
     var endPressCount = 0;
     final session = FastingSession.start(
+      id: _testSessionId,
       startTime: DateTime.utc(2026, 6, 21),
       plan: FastingPlan.sixteenHours,
     );
@@ -183,6 +192,7 @@ void main() {
     tester,
   ) async {
     final session = FastingSession.start(
+      id: _testSessionId,
       startTime: DateTime.utc(2026, 6, 21),
       plan: FastingPlan.sixteenHours,
     );
@@ -206,6 +216,7 @@ void main() {
 
   testWidgets('fits narrow screens with large text', (tester) async {
     final session = FastingSession.start(
+      id: _testSessionId,
       startTime: DateTime.utc(2026, 6, 21),
       plan: FastingPlan.sixteenHours,
     );

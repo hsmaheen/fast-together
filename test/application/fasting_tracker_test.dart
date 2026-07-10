@@ -1,6 +1,7 @@
 import 'package:fasting_app/application/fasting_tracker.dart';
 import 'package:fasting_app/domain/fasting_plan.dart';
 import 'package:fasting_app/domain/fasting_session.dart';
+import 'package:fasting_app/domain/fasting_session_id.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -102,6 +103,43 @@ void main() {
         [newerEndTime, olderEndTime],
       );
     });
+
+    test(
+      'keeps Personal Fasting Activity newest-first after ending backdated sessions',
+      () {
+        final ids = [
+          FastingSessionId('z-newest'),
+          FastingSessionId('b-tied'),
+          FastingSessionId('a-tied'),
+        ];
+        final tracker = FastingTracker(
+          nowUtc: () => DateTime.utc(2026, 6, 23),
+          newSessionId: () => ids.removeAt(0),
+        );
+        tracker.start(
+          startTime: DateTime.utc(2026, 6, 20, 8),
+          plan: FastingPlan.sixteenHours,
+        );
+        tracker.end(actualEndTime: DateTime.utc(2026, 6, 22, 1));
+        tracker.start(
+          startTime: DateTime.utc(2026, 6, 19, 8),
+          plan: FastingPlan.sixteenHours,
+        );
+        tracker.end(actualEndTime: DateTime.utc(2026, 6, 21, 1));
+        tracker.start(
+          startTime: DateTime.utc(2026, 6, 20, 8),
+          plan: FastingPlan.sixteenHours,
+        );
+        tracker.end(actualEndTime: DateTime.utc(2026, 6, 21, 1));
+
+        expect(tracker.recentEndedSessions.map((session) => session.id.value), [
+          'z-newest',
+          'a-tied',
+          'b-tied',
+        ]);
+        expect(tracker.latestSession?.id.value, 'z-newest');
+      },
+    );
 
     test(
       'exposes active and latest Fasting Sessions separately after ending',
@@ -270,36 +308,39 @@ void main() {
       );
     });
 
-    test('deletes a specific ended Fasting Session from recent history', () {
-      final tracker = trackerAfterTestSessions();
-      tracker.start(
-        startTime: DateTime.utc(2026, 6, 19, 8),
-        plan: FastingPlan.sixteenHours,
-      );
-      final oldestEndTime = DateTime.utc(2026, 6, 20, 1);
-      tracker.end(actualEndTime: oldestEndTime);
-      tracker.start(
-        startTime: DateTime.utc(2026, 6, 20, 8),
-        plan: FastingPlan.sixteenHours,
-      );
-      final sessionToDeleteEndTime = DateTime.utc(2026, 6, 21, 1);
-      tracker.end(actualEndTime: sessionToDeleteEndTime);
-      tracker.start(
-        startTime: DateTime.utc(2026, 6, 21, 8),
-        plan: FastingPlan.sixteenHours,
-      );
-      final newestEndTime = DateTime.utc(2026, 6, 22, 1);
-      tracker.end(actualEndTime: newestEndTime);
-      final sessionToDelete = tracker.recentEndedSessions[1];
+    test(
+      'deletes a specific ended Fasting Session by ID from recent history',
+      () {
+        final tracker = trackerAfterTestSessions();
+        tracker.start(
+          startTime: DateTime.utc(2026, 6, 19, 8),
+          plan: FastingPlan.sixteenHours,
+        );
+        final oldestEndTime = DateTime.utc(2026, 6, 20, 1);
+        tracker.end(actualEndTime: oldestEndTime);
+        tracker.start(
+          startTime: DateTime.utc(2026, 6, 20, 8),
+          plan: FastingPlan.sixteenHours,
+        );
+        final sessionToDeleteEndTime = DateTime.utc(2026, 6, 21, 1);
+        tracker.end(actualEndTime: sessionToDeleteEndTime);
+        tracker.start(
+          startTime: DateTime.utc(2026, 6, 21, 8),
+          plan: FastingPlan.sixteenHours,
+        );
+        final newestEndTime = DateTime.utc(2026, 6, 22, 1);
+        tracker.end(actualEndTime: newestEndTime);
+        final sessionToDelete = tracker.recentEndedSessions[1];
 
-      tracker.deleteEndedSession(sessionToDelete);
+        tracker.deleteEndedSession(sessionToDelete.id);
 
-      expect(
-        tracker.recentEndedSessions.map((session) => session.actualEndTime),
-        [newestEndTime, oldestEndTime],
-      );
-      expect(tracker.latestSession?.actualEndTime, newestEndTime);
-    });
+        expect(
+          tracker.recentEndedSessions.map((session) => session.actualEndTime),
+          [newestEndTime, oldestEndTime],
+        );
+        expect(tracker.latestSession?.actualEndTime, newestEndTime);
+      },
+    );
 
     test('does not delete an active Fasting Session', () {
       final tracker = trackerAfterTestSessions();
@@ -308,7 +349,7 @@ void main() {
 
       expect(() => tracker.deleteLatestEndedSession(), throwsStateError);
       expect(
-        () => tracker.deleteEndedSession(tracker.activeSession!),
+        () => tracker.deleteEndedSession(tracker.activeSession!.id),
         throwsStateError,
       );
 
@@ -333,6 +374,40 @@ void main() {
         DateTime.utc(2026, 6, 22, 0, 30),
       );
     });
+
+    test(
+      'keeps Personal Fasting Activity ordered after correcting actual end time',
+      () {
+        final ids = [
+          FastingSessionId('z-corrected'),
+          FastingSessionId('a-tied'),
+        ];
+        final tracker = FastingTracker(
+          nowUtc: () => DateTime.utc(2026, 6, 23),
+          newSessionId: () => ids.removeAt(0),
+        );
+        tracker.start(
+          startTime: DateTime.utc(2026, 6, 20, 8),
+          plan: FastingPlan.sixteenHours,
+        );
+        tracker.end(actualEndTime: DateTime.utc(2026, 6, 22, 1));
+        tracker.start(
+          startTime: DateTime.utc(2026, 6, 19, 8),
+          plan: FastingPlan.sixteenHours,
+        );
+        tracker.end(actualEndTime: DateTime.utc(2026, 6, 21, 1));
+
+        tracker.correctActualEndTime(
+          actualEndTime: DateTime.utc(2026, 6, 21, 1),
+        );
+
+        expect(tracker.recentEndedSessions.map((session) => session.id.value), [
+          'a-tied',
+          'z-corrected',
+        ]);
+        expect(tracker.latestSession?.id.value, 'a-tied');
+      },
+    );
 
     test(
       'correcting the latest ended Fasting Session updates recent history',

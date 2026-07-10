@@ -1,9 +1,11 @@
 import 'package:fasting_app/domain/fasting_plan.dart';
+import 'package:fasting_app/domain/fasting_session_id.dart';
 
 enum FastingResult { completed, endedEarly }
 
 class FastingSession {
   factory FastingSession({
+    required FastingSessionId id,
     required DateTime startTime,
     required DateTime targetEndTime,
     DateTime? actualEndTime,
@@ -28,6 +30,7 @@ class FastingSession {
     }
 
     return FastingSession._(
+      id: id,
       startTime: startTime,
       targetEndTime: targetEndTime,
       actualEndTime: actualEndTime,
@@ -35,21 +38,25 @@ class FastingSession {
   }
 
   const FastingSession._({
+    required this.id,
     required this.startTime,
     required this.targetEndTime,
     this.actualEndTime,
   });
 
   factory FastingSession.start({
+    required FastingSessionId id,
     required DateTime startTime,
     required FastingPlan plan,
   }) {
     return FastingSession(
+      id: id,
       startTime: startTime,
       targetEndTime: plan.targetEndTimeFrom(startTime),
     );
   }
 
+  final FastingSessionId id;
   final DateTime startTime;
   final DateTime targetEndTime;
   final DateTime? actualEndTime;
@@ -84,6 +91,7 @@ class FastingSession {
     }
 
     return FastingSession(
+      id: id,
       startTime: startTime,
       targetEndTime: targetEndTime,
       actualEndTime: actualEndTime,
@@ -96,6 +104,7 @@ class FastingSession {
     }
 
     return FastingSession(
+      id: id,
       startTime: startTime,
       targetEndTime: targetEndTime,
       actualEndTime: actualEndTime,
