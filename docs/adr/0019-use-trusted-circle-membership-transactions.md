@@ -15,10 +15,10 @@ This ADR defines the membership transaction contract but does not implement Circ
 
 ## Shared Fasting Activity projection
 
-`fastingCircles/{circleId}/sharedFastingActivity/{uid}` remains one current-status projection per Circle Member, not a history collection. Only the member identified by `{uid}` can create or replace it, only while they belong to the circle, and the write must carry the current App Account Active Device marker.
+`fastingCircles/{circleId}/sharedFastingActivity/{uid}` remains one current-status projection per Circle Member, not a history collection. Only the member identified by `{uid}` can create or replace it, only while they belong to the circle, and the write must carry the current App Account Active Device marker. The App Account owner can read the root account document, but Active Device state there is trusted-write-only so a superseded client cannot establish its own write authority.
 
 - `Not Fasting` stores only `status`, `activeDeviceId`, and `updatedAt`.
-- `Fasting` additionally stores UTC `startedAt` and `targetEndedAt`, with the target after the start.
+- `Fasting` additionally stores UTC `startedAt` and `targetEndedAt`; the start cannot be in the future and the target must be after the start.
 - Elapsed, remaining, and over-target values are derived from `startedAt`, `targetEndedAt`, and the application clock. Persisting those changing values, an actual end time, session results, or any other history field is denied.
 
 Circle Members first list the Circle Membership records in a known Fasting Circle, then read each current member's projection by document path. Shared Fasting Activity collection reads are denied because Firestore rules cannot filter out an orphaned projection after its member edge is gone; the maximum of four Circle Members keeps the individual reads bounded. An App Account discovers its known circle IDs from its owner-only membership index and then reads each circle by document path; global Fasting Circle and Shared Fasting Activity collection queries are not part of the contract because Firestore rules are not filters. Personal Fasting Activity stays only at `appAccounts/{uid}/fastingSessions/{sessionId}` and remains owner-only.

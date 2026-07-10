@@ -355,6 +355,70 @@ test('Shared Fasting Activity allows only current-status derivation data from th
   );
 });
 
+test('Shared Fasting Activity rejects a future start time', async () => {
+  await seedCircle();
+  await testEnv.withSecurityRulesDisabled(async (context) => {
+    await setDoc(doc(context.firestore(), 'appAccounts/member-1'), {
+      activeDeviceId: 'device-1',
+    });
+  });
+  const memberDb = testEnv.authenticatedContext('member-1').firestore();
+
+  await assertFails(
+    setDoc(
+      doc(
+        memberDb,
+        'fastingCircles/circle-1/sharedFastingActivity/member-1',
+      ),
+      {
+        status: 'Fasting',
+        startedAt: Timestamp.fromDate(new Date('2099-01-01T00:00:00Z')),
+        targetEndedAt: Timestamp.fromDate(new Date('2099-01-02T00:00:00Z')),
+        activeDeviceId: 'device-1',
+        updatedAt: serverTimestamp(),
+      },
+    ),
+  );
+});
+
+test('a superseded device cannot rebind Active Device authority and publish current status', async () => {
+  await seedCircle();
+  await testEnv.withSecurityRulesDisabled(async (context) => {
+    await setDoc(doc(context.firestore(), 'appAccounts/member-1'), {
+      activeDeviceId: 'current-device',
+    });
+  });
+  const memberDb = testEnv.authenticatedContext('member-1').firestore();
+  const appAccountRef = doc(memberDb, 'appAccounts/member-1');
+  const activityRef = doc(
+    memberDb,
+    'fastingCircles/circle-1/sharedFastingActivity/member-1',
+  );
+  let rebindWasRejected = false;
+  let currentStatusWriteWasRejected = false;
+
+  await assertSucceeds(getDoc(appAccountRef));
+  try {
+    await setDoc(appAccountRef, { activeDeviceId: 'superseded-device' });
+  } catch {
+    rebindWasRejected = true;
+  }
+  try {
+    await setDoc(activityRef, {
+      status: 'Fasting',
+      startedAt: Timestamp.fromDate(new Date('2026-07-01T08:00:00Z')),
+      targetEndedAt: Timestamp.fromDate(new Date('2026-07-02T00:00:00Z')),
+      activeDeviceId: 'superseded-device',
+      updatedAt: serverTimestamp(),
+    });
+  } catch {
+    currentStatusWriteWasRejected = true;
+  }
+
+  assert.equal(rebindWasRejected, true);
+  assert.equal(currentStatusWriteWasRejected, true);
+});
+
 test('Not Fasting replaces timing data instead of retaining circle history', async () => {
   await seedCircle();
   await testEnv.withSecurityRulesDisabled(async (context) => {

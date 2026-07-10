@@ -69,6 +69,7 @@ service cloud.firestore {
               'updatedAt',
             ])
             && request.resource.data.startedAt is timestamp
+            && request.resource.data.startedAt <= request.time
             && request.resource.data.targetEndedAt is timestamp
             && request.resource.data.targetEndedAt
               > request.resource.data.startedAt
@@ -77,7 +78,7 @@ service cloud.firestore {
     }
 
     match /appAccounts/{uid} {
-      allow read, write: if isOwner(uid);
+      allow read: if isOwner(uid);
 
       match /fastingSessions/{sessionId} {
         allow read, write: if isOwner(uid);
