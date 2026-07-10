@@ -151,14 +151,6 @@ test('a Circle Member writes their current Shared Fasting Activity for members t
     }),
   );
   await assertSucceeds(getDoc(doc(otherMemberDb, activityPath)));
-  await assertSucceeds(
-    getDocs(
-      collection(
-        otherMemberDb,
-        'fastingCircles/circle-1/sharedFastingActivity',
-      ),
-    ),
-  );
 });
 
 test('clients cannot bypass trusted four-member and five-membership limits', async () => {
@@ -274,6 +266,46 @@ test('Shared Fasting Activity rejects non-members and writes for another member'
       activeDeviceId: 'device-1',
       updatedAt: serverTimestamp(),
     }),
+  );
+});
+
+test('Shared Fasting Activity stops exposing a former Circle Member', async () => {
+  await seedCircle();
+  await testEnv.withSecurityRulesDisabled(async (context) => {
+    const db = context.firestore();
+    await setDoc(
+      doc(db, 'fastingCircles/circle-1/sharedFastingActivity/member-1'),
+      {
+        status: 'Fasting',
+        startedAt: Timestamp.fromDate(new Date('2026-07-01T08:00:00Z')),
+        targetEndedAt: Timestamp.fromDate(new Date('2026-07-02T00:00:00Z')),
+        activeDeviceId: 'device-1',
+        updatedAt: Timestamp.fromDate(new Date('2026-07-01T08:00:00Z')),
+      },
+    );
+    await deleteDoc(
+      doc(db, 'fastingCircles/circle-1/members/member-1'),
+    );
+  });
+  const remainingMemberDb = testEnv
+    .authenticatedContext('member-2')
+    .firestore();
+
+  await assertFails(
+    getDoc(
+      doc(
+        remainingMemberDb,
+        'fastingCircles/circle-1/sharedFastingActivity/member-1',
+      ),
+    ),
+  );
+  await assertFails(
+    getDocs(
+      collection(
+        remainingMemberDb,
+        'fastingCircles/circle-1/sharedFastingActivity',
+      ),
+    ),
   );
 });
 

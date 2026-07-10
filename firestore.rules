@@ -101,7 +101,8 @@ service cloud.firestore {
       }
 
       match /sharedFastingActivity/{uid} {
-        allow read: if isCircleMember(circleId);
+        allow get: if isCircleMember(circleId)
+          && exists(/databases/$(database)/documents/fastingCircles/$(circleId)/members/$(uid));
         allow create, update: if isOwner(uid)
           && isCircleMember(circleId)
           && isValidSharedFastingActivity(uid);
