@@ -15,14 +15,18 @@ the persisted outcome. This is deliberately not described as a distributed
 rollback: the local tracker has not changed, and the repository owns the
 atomic durable mutation described by ADR 0020 and ADR 0022.
 
-An active-start failure also retains the exact attempted Fasting Session in the
-failure outcome. This preserves its generated stable ID without presenting it
-as local durable state. `retryStart` first reads the durable snapshot: an exact
-durable active session reconciles successfully without another write; a
-different active or an ended session with that ID is rejected; an absent ID is
-replayed with the same stable ID. This covers an acknowledgement that is lost
-after the Firestore transaction has already committed, without fabricating a
-second active session or claiming durability on the failed attempt.
+An active-start failure also retains the exact attempted Fasting Session and
+the originating App Account ID in the failure outcome. This preserves its
+generated stable ID without presenting it as local durable state or making the
+command portable between accounts. `retryStart` first confirms that the
+currently authenticated App Account is the originating one. A different
+account is rejected before the repository is read or written. For the same
+account, it then reads the durable snapshot: an exact durable active session
+reconciles successfully without another write; a different active or an ended
+session with that ID is rejected; an absent ID is replayed with the same stable
+ID. This covers an acknowledgement that is lost after the Firestore transaction
+has already committed, without fabricating a second active session, writing the
+session into another owner path, or claiming durability on the failed attempt.
 
 Ending is anchored to the durable active Fasting Session rather than solely to
 the caller's tracker. The application service loads the account snapshot,

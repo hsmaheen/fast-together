@@ -298,7 +298,7 @@ void main() {
       final repository = _CommitThenThrowPersonalFastingActivityRepository();
       final transitions = PersistFastingSessionTransitions(
         _FakeAppAccountSessionProvider(
-          AppAccountSession(AppAccountId('app-account')),
+          AppAccountSession(AppAccountId('account-a')),
         ),
         repository,
       );
@@ -315,6 +315,7 @@ void main() {
       expect(firstAttempt, isA<FastingSessionTransitionFailure>());
       final failedStart = firstAttempt as FastingSessionTransitionFailure;
       expect(failedStart.attemptedSession?.id.value, 'stable-session-id');
+      expect(failedStart.attemptedAccountId, AppAccountId('account-a'));
       expect(failedStart.tracker.status, FastingStatus.notFasting);
 
       final reconciled = await transitions.retryStart(failedStart);
@@ -324,6 +325,44 @@ void main() {
       expect(repository.upsertedSessions, hasLength(1));
     },
   );
+
+  test('rejects a failed start retry after the App Account changes', () async {
+    final accountA = AppAccountId('account-a');
+    final accountB = AppAccountId('account-b');
+    final appAccountSessions = _SwitchableAppAccountSessionProvider(
+      AppAccountSession(accountA),
+    );
+    final repository = _AccountScopedCommitThenThrowRepository();
+    final transitions = PersistFastingSessionTransitions(
+      appAccountSessions,
+      repository,
+    );
+    final tracker = FastingTracker(
+      nowUtc: () => DateTime.utc(2026, 7, 20),
+      newSessionId: () => FastingSessionId('stable-session-id'),
+    );
+
+    final firstAttempt = await transitions.start(
+      tracker: tracker,
+      startTime: DateTime.utc(2026, 7, 18, 8),
+      plan: FastingPlan.sixteenHours,
+    );
+    final failedStart = firstAttempt as FastingSessionTransitionFailure;
+    appAccountSessions.session = AppAccountSession(accountB);
+
+    final retried = await transitions.retryStart(failedStart);
+
+    expect(retried, isA<FastingSessionTransitionFailure>());
+    expect(retried.tracker, same(tracker));
+    expect(tracker.status, FastingStatus.notFasting);
+    expect(
+      repository.snapshotFor(accountA).activeSession?.id.value,
+      'stable-session-id',
+    );
+    expect(repository.snapshotFor(accountB).activeSession, isNull);
+    expect(repository.upsertsFor(accountA), hasLength(1));
+    expect(repository.upsertsFor(accountB), isEmpty);
+  });
 
   test(
     'rejects ending a stale local active session when durable activity has another active session',
@@ -469,6 +508,21 @@ final class _FakeAppAccountSessionProvider
   }
 }
 
+final class _SwitchableAppAccountSessionProvider
+    implements AppAccountSessionProvider {
+  _SwitchableAppAccountSessionProvider(this.session);
+
+  AppAccountSession? session;
+
+  @override
+  Future<AppAccountSession?> currentSession() async => session;
+
+  @override
+  Future<AppAccountSession> signInOrCreateForLocalEmulator() async {
+    return session ?? (throw StateError('No App Account session'));
+  }
+}
+
 final class _InMemoryPersonalFastingActivityRepository
     implements PersonalFastingActivityRepository {
   _InMemoryPersonalFastingActivityRepository([
@@ -591,6 +645,55 @@ final class _CommitThenThrowPersonalFastingActivityRepository
       throw StateError('Firestore acknowledgement was lost');
     }
     return _snapshot;
+  }
+
+  @override
+  Future<PersonalFastingActivitySnapshot> endActiveSession(
+    AppAccountId accountId,
+    FastingSession endedSession,
+  ) => throw UnimplementedError();
+
+  @override
+  Future<PersonalFastingActivitySnapshot> deleteEndedSession(
+    AppAccountId accountId,
+    FastingSessionId id,
+  ) => throw UnimplementedError();
+}
+
+final class _AccountScopedCommitThenThrowRepository
+    implements PersonalFastingActivityRepository {
+  final _snapshots = <AppAccountId, PersonalFastingActivitySnapshot>{};
+  final _upserts = <AppAccountId, List<FastingSession>>{};
+  var _shouldThrowAfterCommit = true;
+
+  PersonalFastingActivitySnapshot snapshotFor(AppAccountId accountId) {
+    return _snapshots[accountId] ?? PersonalFastingActivitySnapshot();
+  }
+
+  List<FastingSession> upsertsFor(AppAccountId accountId) {
+    return List.unmodifiable(_upserts[accountId] ?? const []);
+  }
+
+  @override
+  Future<PersonalFastingActivitySnapshot> loadSnapshot(
+    AppAccountId accountId,
+  ) async {
+    return snapshotFor(accountId);
+  }
+
+  @override
+  Future<PersonalFastingActivitySnapshot> upsert(
+    AppAccountId accountId,
+    FastingSession session,
+  ) async {
+    _upserts.putIfAbsent(accountId, () => []).add(session);
+    final snapshot = snapshotFor(accountId).upsert(session);
+    _snapshots[accountId] = snapshot;
+    if (_shouldThrowAfterCommit) {
+      _shouldThrowAfterCommit = false;
+      throw StateError('Firestore acknowledgement was lost');
+    }
+    return snapshot;
   }
 
   @override

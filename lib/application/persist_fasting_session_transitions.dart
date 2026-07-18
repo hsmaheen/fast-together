@@ -22,6 +22,7 @@ final class PersistFastingSessionTransitions {
   }) async {
     final candidate = tracker.copy();
     FastingSession? attemptedSession;
+    AppAccountId? attemptedAccountId;
 
     try {
       final existingActiveSession = candidate.activeSession;
@@ -39,12 +40,16 @@ final class PersistFastingSessionTransitions {
         throw StateError('Cannot start while already Fasting');
       }
       attemptedSession = session;
+      final appAccountSession = await _requireAppAccountSession();
+      attemptedAccountId = appAccountSession.accountId;
 
       return await _upsert(
         originalTracker: tracker,
         candidateTracker: candidate,
+        accountId: appAccountSession.accountId,
         session: session,
         attemptedSession: session,
+        attemptedAccountId: attemptedAccountId,
       );
     } on Object catch (error, stackTrace) {
       return _failure(
@@ -52,6 +57,7 @@ final class PersistFastingSessionTransitions {
         error: error,
         stackTrace: stackTrace,
         attemptedSession: attemptedSession,
+        attemptedAccountId: attemptedAccountId,
       );
     }
   }
@@ -63,19 +69,27 @@ final class PersistFastingSessionTransitions {
     FastingSessionTransitionFailure failure,
   ) async {
     final attemptedSession = failure.attemptedSession;
-    if (attemptedSession == null || !attemptedSession.isActive) {
+    final attemptedAccountId = failure.attemptedAccountId;
+    if (attemptedSession == null ||
+        !attemptedSession.isActive ||
+        attemptedAccountId == null) {
       return _failure(
         tracker: failure.tracker,
-        error: StateError('Cannot retry a start without an active session'),
+        error: StateError(
+          'Cannot retry a start without an active session and App Account',
+        ),
         stackTrace: StackTrace.current,
       );
     }
 
     try {
       final appAccountSession = await _requireAppAccountSession();
-      final snapshot = await _repository.loadSnapshot(
-        appAccountSession.accountId,
-      );
+      if (appAccountSession.accountId != attemptedAccountId) {
+        throw StateError(
+          'Cannot retry a Fasting Session start for a different App Account',
+        );
+      }
+      final snapshot = await _repository.loadSnapshot(attemptedAccountId);
       final durableActiveSession = snapshot.activeSession;
       if (durableActiveSession != null) {
         if (!_sameSession(durableActiveSession, attemptedSession)) {
@@ -97,7 +111,7 @@ final class PersistFastingSessionTransitions {
       }
 
       final persistedSnapshot = await _repository.upsert(
-        appAccountSession.accountId,
+        attemptedAccountId,
         attemptedSession,
       );
       return PersistedFastingSessionTransition(
@@ -110,6 +124,7 @@ final class PersistFastingSessionTransitions {
         error: error,
         stackTrace: stackTrace,
         attemptedSession: attemptedSession,
+        attemptedAccountId: attemptedAccountId,
       );
     }
   }
@@ -160,16 +175,13 @@ final class PersistFastingSessionTransitions {
   Future<FastingSessionTransition> _upsert({
     required FastingTracker originalTracker,
     required FastingTracker candidateTracker,
+    required AppAccountId accountId,
     required FastingSession session,
     FastingSession? attemptedSession,
+    AppAccountId? attemptedAccountId,
   }) async {
     try {
-      final appAccountSession = await _requireAppAccountSession();
-
-      final snapshot = await _repository.upsert(
-        appAccountSession.accountId,
-        session,
-      );
+      final snapshot = await _repository.upsert(accountId, session);
       return PersistedFastingSessionTransition(
         tracker: candidateTracker.withSnapshot(snapshot),
         session: session,
@@ -180,6 +192,7 @@ final class PersistFastingSessionTransitions {
         error: error,
         stackTrace: stackTrace,
         attemptedSession: attemptedSession,
+        attemptedAccountId: attemptedAccountId,
       );
     }
   }
@@ -244,11 +257,13 @@ final class FastingSessionTransitionFailure extends FastingSessionTransition {
     required this.error,
     required this.stackTrace,
     this.attemptedSession,
+    this.attemptedAccountId,
   }) : super(tracker);
 
   final Object error;
   final StackTrace stackTrace;
   final FastingSession? attemptedSession;
+  final AppAccountId? attemptedAccountId;
 }
 
 FastingSessionTransitionFailure _failure({
@@ -256,12 +271,14 @@ FastingSessionTransitionFailure _failure({
   required Object error,
   required StackTrace stackTrace,
   FastingSession? attemptedSession,
+  AppAccountId? attemptedAccountId,
 }) {
   return FastingSessionTransitionFailure(
     tracker: tracker,
     error: error,
     stackTrace: stackTrace,
     attemptedSession: attemptedSession,
+    attemptedAccountId: attemptedAccountId,
   );
 }
 
