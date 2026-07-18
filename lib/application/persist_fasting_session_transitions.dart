@@ -158,7 +158,9 @@ final class PersistFastingSessionTransitions {
 
       final candidate = tracker.withSnapshot(snapshot);
       candidate.end(actualEndTime: actualEndTime);
-      final endedSession = candidate.latestSession!;
+      final endedSession = candidate.recentEndedSessions.singleWhere(
+        (session) => session.id == durableActiveSession.id,
+      );
       final persistedSnapshot = await _repository.endActiveSession(
         appAccountSession.accountId,
         endedSession,

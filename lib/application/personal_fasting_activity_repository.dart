@@ -36,6 +36,25 @@ abstract interface class PersonalFastingActivityRepository {
     FastingSession endedSession,
   );
 
+  /// Atomically replaces only [previousSession]'s actual end time with
+  /// [correctedSession]'s value. Both sessions must be ended and share the
+  /// same stable ID and immutable start details. The durable session must
+  /// exactly match [previousSession], including its actual end time. A caller
+  /// recovering a lost acknowledgement must first load and reconcile rather
+  /// than using this operation to overwrite an unknown durable state.
+  Future<PersonalFastingActivitySnapshot> correctEndedSession(
+    AppAccountId accountId,
+    FastingSession previousSession,
+    FastingSession correctedSession,
+  );
+
+  /// Atomically deletes [expectedSession] only when its stable ID and complete
+  /// ended state still match durable Personal Fasting Activity.
+  Future<PersonalFastingActivitySnapshot> deleteExactEndedSession(
+    AppAccountId accountId,
+    FastingSession expectedSession,
+  );
+
   /// Atomically applies [PersonalFastingActivitySnapshot.deleteEndedSession]
   /// and returns the resulting snapshot. It throws [StateError] when [id]
   /// identifies the active session or no ended Fasting Session.

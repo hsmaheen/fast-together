@@ -199,6 +199,107 @@ final class FirestorePersonalFastingActivityRepository
   }
 
   @override
+  Future<PersonalFastingActivitySnapshot> correctEndedSession(
+    AppAccountId accountId,
+    FastingSession previousSession,
+    FastingSession correctedSession,
+  ) async {
+    if (previousSession.isActive || correctedSession.isActive) {
+      throw ArgumentError.value(
+        correctedSession,
+        'correctedSession',
+        'must be ended',
+      );
+    }
+    if (!_sameLifecycle(previousSession, correctedSession)) {
+      throw ArgumentError.value(
+        correctedSession,
+        'correctedSession',
+        'must preserve the stable ID and immutable session details',
+      );
+    }
+
+    final ownerAccountId = _ownerAccountIdFor(accountId);
+    await _loadSnapshot(ownerAccountId);
+    final sessionDocument = _fastingSessions(
+      ownerAccountId,
+    ).doc(previousSession.id.value);
+    final activityState = _activityState(ownerAccountId);
+
+    await _firestore.runTransaction<void>((transaction) async {
+      final stateDocument = await transaction.get(activityState);
+      final persistedSessionDocument = await transaction.get(sessionDocument);
+      if (!persistedSessionDocument.exists) {
+        throw StateError('Cannot correct a missing ended Fasting Session');
+      }
+
+      final persistedSession = _sessionFromDocument(persistedSessionDocument);
+      if (persistedSession.isActive ||
+          _activeSessionIdFromState(stateDocument) ==
+              previousSession.id.value) {
+        throw StateError('Cannot correct an active Fasting Session');
+      }
+      if (!_sameSession(persistedSession, previousSession)) {
+        throw StateError(
+          'Cannot correct a Fasting Session outside its durable prior state',
+        );
+      }
+      if (_sameSession(persistedSession, correctedSession)) {
+        return;
+      }
+
+      transaction.set(sessionDocument, _documentDataFor(correctedSession));
+    });
+
+    return loadSnapshot(ownerAccountId);
+  }
+
+  @override
+  Future<PersonalFastingActivitySnapshot> deleteExactEndedSession(
+    AppAccountId accountId,
+    FastingSession expectedSession,
+  ) async {
+    if (expectedSession.isActive) {
+      throw ArgumentError.value(
+        expectedSession,
+        'expectedSession',
+        'must be ended',
+      );
+    }
+
+    final ownerAccountId = _ownerAccountIdFor(accountId);
+    await _loadSnapshot(ownerAccountId);
+    final sessionDocument = _fastingSessions(
+      ownerAccountId,
+    ).doc(expectedSession.id.value);
+    final activityState = _activityState(ownerAccountId);
+
+    await _firestore.runTransaction<void>((transaction) async {
+      final stateDocument = await transaction.get(activityState);
+      final persistedSessionDocument = await transaction.get(sessionDocument);
+      if (!persistedSessionDocument.exists) {
+        throw StateError('Cannot delete a missing ended Fasting Session');
+      }
+
+      final persistedSession = _sessionFromDocument(persistedSessionDocument);
+      if (persistedSession.isActive ||
+          _activeSessionIdFromState(stateDocument) ==
+              expectedSession.id.value) {
+        throw StateError('Cannot delete an active Fasting Session');
+      }
+      if (!_sameSession(persistedSession, expectedSession)) {
+        throw StateError(
+          'Cannot delete a Fasting Session outside its durable prior state',
+        );
+      }
+
+      transaction.delete(sessionDocument);
+    });
+
+    return loadSnapshot(ownerAccountId);
+  }
+
+  @override
   Future<PersonalFastingActivitySnapshot> deleteEndedSession(
     AppAccountId accountId,
     FastingSessionId id,

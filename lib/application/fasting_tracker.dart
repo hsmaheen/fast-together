@@ -146,10 +146,23 @@ class FastingTracker {
       );
     }
 
-    _requireNotFuture(actualEndTime, 'actualEndTime', _nowUtc());
-    _recentEndedSessions[0] = session.correctActualEndTime(
-      actualEndTime: actualEndTime,
+    correctEndedSession(session.id, actualEndTime: actualEndTime);
+  }
+
+  void correctEndedSession(
+    FastingSessionId id, {
+    required DateTime actualEndTime,
+  }) {
+    final sessionIndex = _recentEndedSessions.indexWhere(
+      (session) => session.id == id,
     );
+    if (sessionIndex == -1) {
+      throw StateError('Cannot correct a Fasting Session outside history');
+    }
+
+    _requireNotFuture(actualEndTime, 'actualEndTime', _nowUtc());
+    _recentEndedSessions[sessionIndex] = _recentEndedSessions[sessionIndex]
+        .correctActualEndTime(actualEndTime: actualEndTime);
     _orderEndedSessions();
   }
 
