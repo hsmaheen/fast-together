@@ -6,17 +6,21 @@ import 'package:fasting_app/application/app_account_session.dart';
 import 'package:fasting_app/application/personal_fasting_activity_repository.dart';
 import 'package:fasting_app/domain/fasting_session.dart';
 import 'package:fasting_app/domain/fasting_session_id.dart';
+import 'package:flutter/foundation.dart';
 
 final class FirestorePersonalFastingActivityRepository
     implements PersonalFastingActivityRepository {
   FirestorePersonalFastingActivityRepository({
     required FirebaseFirestore firestore,
     required AppAccountSession appAccountSession,
+    @visibleForTesting Future<void> Function()? afterFastingSessionsRead,
   }) : _firestore = firestore,
-       _appAccountSession = appAccountSession;
+       _appAccountSession = appAccountSession,
+       _afterFastingSessionsRead = afterFastingSessionsRead;
 
   final FirebaseFirestore _firestore;
   final AppAccountSession _appAccountSession;
+  final Future<void> Function()? _afterFastingSessionsRead;
 
   @override
   Future<PersonalFastingActivitySnapshot> loadSnapshot(
@@ -29,12 +33,33 @@ final class FirestorePersonalFastingActivityRepository
   Future<PersonalFastingActivitySnapshot> _loadSnapshot(
     AppAccountId ownerAccountId,
   ) async {
-    final documents = await _fastingSessions(
-      ownerAccountId,
-    ).get(const GetOptions(source: Source.server));
-    final stateDocument = await _activityState(
-      ownerAccountId,
-    ).get(const GetOptions(source: Source.server));
+    _ActivityStateMismatch? previousMismatch;
+    for (var attempt = 0; attempt < _snapshotReadAttempts; attempt++) {
+      final documents = await _fastingSessions(
+        ownerAccountId,
+      ).get(const GetOptions(source: Source.server));
+      await _afterFastingSessionsRead?.call();
+      final stateDocument = await _activityState(
+        ownerAccountId,
+      ).get(const GetOptions(source: Source.server));
+
+      try {
+        return _snapshotFromDocuments(documents, stateDocument);
+      } on _ActivityStateMismatch catch (mismatch) {
+        if (mismatch.fingerprint == previousMismatch?.fingerprint) {
+          throw StateError(mismatch.message);
+        }
+        previousMismatch = mismatch;
+      }
+    }
+
+    throw StateError('Could not read a consistent Personal Fasting Activity');
+  }
+
+  PersonalFastingActivitySnapshot _snapshotFromDocuments(
+    QuerySnapshot<Map<String, dynamic>> documents,
+    DocumentSnapshot<Map<String, dynamic>> stateDocument,
+  ) {
     final sessions = documents.docs.map(_sessionFromDocument).toList();
     final activeSessions = sessions
         .where((session) => session.isActive)
@@ -46,16 +71,25 @@ final class FirestorePersonalFastingActivityRepository
       );
     }
     if (activeSessions.isNotEmpty && !stateDocument.exists) {
-      throw StateError('Active Fasting Session is missing its activity state');
+      throw _ActivityStateMismatch(
+        'Active Fasting Session is missing its activity state',
+        'active:${activeSessions.single.id.value};state:absent',
+      );
     }
     if (activeSessions case [final activeSession]) {
       final activeSessionId = _activeSessionIdFromState(stateDocument);
       if (activeSessionId != activeSession.id.value) {
-        throw StateError('Activity state does not match the active Fasting Session');
+        throw _ActivityStateMismatch(
+          'Activity state does not match the active Fasting Session',
+          'active:${activeSession.id.value};state:$activeSessionId',
+        );
       }
     }
     if (activeSessions.isEmpty && stateDocument.exists) {
-      throw StateError('Inactive Personal Fasting Activity has activity state');
+      throw _ActivityStateMismatch(
+        'Inactive Personal Fasting Activity has activity state',
+        'active:absent;state:${_activeSessionIdFromState(stateDocument)}',
+      );
     }
 
     return PersonalFastingActivitySnapshot(
@@ -173,6 +207,15 @@ final class FirestorePersonalFastingActivityRepository
         .collection('personalFastingActivity')
         .doc('current');
   }
+}
+
+const _snapshotReadAttempts = 3;
+
+final class _ActivityStateMismatch implements Exception {
+  const _ActivityStateMismatch(this.message, this.fingerprint);
+
+  final String message;
+  final String fingerprint;
 }
 
 Map<String, Object> _documentDataFor(FastingSession session) {

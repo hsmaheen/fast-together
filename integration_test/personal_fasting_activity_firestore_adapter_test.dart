@@ -407,6 +407,98 @@ void main() {
       await _clearFirestoreForTest();
     }
   });
+
+  testWidgets(
+    'loads an ended Fasting Session when its active-to-ended transaction follows the session read',
+    (tester) async {
+      await _clearPersonalFastingActivity(repository, session.accountId);
+      final activeSession = FastingSession(
+        id: FastingSessionId('concurrently-ended-session'),
+        startTime: DateTime.utc(2026, 7, 18, 8),
+        targetEndTime: DateTime.utc(2026, 7, 19, 8),
+      );
+      final endedSession = activeSession.end(
+        actualEndTime: DateTime.utc(2026, 7, 18, 20),
+      );
+      await repository.upsert(session.accountId, activeSession);
+
+      var endedBetweenServerReads = false;
+      final interleavedRepository = FirestorePersonalFastingActivityRepository(
+        firestore: FirebaseFirestore.instance,
+        appAccountSession: session,
+        afterFastingSessionsRead: () async {
+          if (endedBetweenServerReads) {
+            return;
+          }
+          endedBetweenServerReads = true;
+          await _endActiveSessionInTransaction(session.accountId, endedSession);
+        },
+      );
+
+      try {
+        final snapshot = await interleavedRepository.loadSnapshot(
+          session.accountId,
+        );
+
+        expect(endedBetweenServerReads, isTrue);
+        expect(snapshot.activeSession, isNull);
+        expect(snapshot.endedSessions.single.id, endedSession.id);
+        expect(
+          snapshot.endedSessions.single.actualEndTime,
+          endedSession.actualEndTime,
+        );
+      } finally {
+        await _clearPersonalFastingActivity(repository, session.accountId);
+      }
+    },
+  );
+
+  testWidgets(
+    'upserts after an active-to-ended transaction follows its preflight session read',
+    (tester) async {
+      await _clearPersonalFastingActivity(repository, session.accountId);
+      final activeSession = FastingSession(
+        id: FastingSessionId('preflight-concurrently-ended-session'),
+        startTime: DateTime.utc(2026, 7, 18, 8),
+        targetEndTime: DateTime.utc(2026, 7, 19, 8),
+      );
+      final endedSession = activeSession.end(
+        actualEndTime: DateTime.utc(2026, 7, 18, 20),
+      );
+      final nextActiveSession = FastingSession(
+        id: FastingSessionId('active-session-after-preflight-transition'),
+        startTime: DateTime.utc(2026, 7, 19, 8),
+        targetEndTime: DateTime.utc(2026, 7, 20, 8),
+      );
+      await repository.upsert(session.accountId, activeSession);
+
+      var endedBetweenServerReads = false;
+      final interleavedRepository = FirestorePersonalFastingActivityRepository(
+        firestore: FirebaseFirestore.instance,
+        appAccountSession: session,
+        afterFastingSessionsRead: () async {
+          if (endedBetweenServerReads) {
+            return;
+          }
+          endedBetweenServerReads = true;
+          await _endActiveSessionInTransaction(session.accountId, endedSession);
+        },
+      );
+
+      try {
+        final snapshot = await interleavedRepository.upsert(
+          session.accountId,
+          nextActiveSession,
+        );
+
+        expect(endedBetweenServerReads, isTrue);
+        expect(snapshot.activeSession?.id, nextActiveSession.id);
+        expect(snapshot.endedSessions.single.id, endedSession.id);
+      } finally {
+        await _clearPersonalFastingActivity(repository, session.accountId);
+      }
+    },
+  );
 }
 
 FastingSession _endedSession({
@@ -486,6 +578,40 @@ Future<void> _seedActiveSessionState(
       'activeSessionId': {'stringValue': activeSessionId},
     },
   );
+}
+
+Future<void> _endActiveSessionInTransaction(
+  AppAccountId accountId,
+  FastingSession endedSession,
+) async {
+  final firestore = FirebaseFirestore.instance;
+  final sessionDocument = firestore
+      .collection('appAccounts')
+      .doc(accountId.value)
+      .collection('fastingSessions')
+      .doc(endedSession.id.value);
+  final stateDocument = firestore
+      .collection('appAccounts')
+      .doc(accountId.value)
+      .collection('personalFastingActivity')
+      .doc('current');
+
+  await firestore.runTransaction<void>((transaction) async {
+    final persistedSession = await transaction.get(sessionDocument);
+    final persistedState = await transaction.get(stateDocument);
+    if (!persistedSession.exists ||
+        !persistedState.exists ||
+        persistedState.data()?['activeSessionId'] != endedSession.id.value) {
+      throw StateError('Expected the active Fasting Session before ending it');
+    }
+
+    transaction.set(sessionDocument, {
+      'startTime': Timestamp.fromDate(endedSession.startTime),
+      'targetEndTime': Timestamp.fromDate(endedSession.targetEndTime),
+      'actualEndTime': Timestamp.fromDate(endedSession.actualEndTime!),
+    });
+    transaction.delete(stateDocument);
+  });
 }
 
 Future<void> _seedDocument({

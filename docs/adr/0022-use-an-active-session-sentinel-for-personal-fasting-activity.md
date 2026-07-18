@@ -26,6 +26,16 @@ Session requires the exact one-field sentinel naming that session. A missing,
 stale, mismatched, or malformed sentinel is corrupted Personal Fasting
 Activity and is rejected. The adapter does not silently repair it.
 
+The Flutter Firestore client cannot include the collection query in a
+transaction, so the session query and sentinel read are separate server
+operations. A valid active-to-ended transaction may commit between them and
+temporarily produce a mismatched pair. The adapter therefore retries only a
+sentinel/session mismatch with fresh full server observations, up to three
+attempts. A repeated observed relationship is stable corruption and is
+rejected; malformed session or sentinel documents are rejected immediately.
+The same validated read is used for mutation preflight, so a valid transition
+between its reads does not reject the requested write.
+
 ## Transaction semantics
 
 Each repository write first verifies that the requested `AppAccountId` is the
