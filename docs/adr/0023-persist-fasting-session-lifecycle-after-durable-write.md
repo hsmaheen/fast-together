@@ -15,17 +15,40 @@ the persisted outcome. This is deliberately not described as a distributed
 rollback: the local tracker has not changed, and the repository owns the
 atomic durable mutation described by ADR 0020 and ADR 0022.
 
+An active-start failure also retains the exact attempted Fasting Session in the
+failure outcome. This preserves its generated stable ID without presenting it
+as local durable state. `retryStart` first reads the durable snapshot: an exact
+durable active session reconciles successfully without another write; a
+different active or an ended session with that ID is rejected; an absent ID is
+replayed with the same stable ID. This covers an acknowledgement that is lost
+after the Firestore transaction has already committed, without fabricating a
+second active session or claiming durability on the failed attempt.
+
+Ending is anchored to the durable active Fasting Session rather than solely to
+the caller's tracker. The application service loads the account snapshot,
+requires the local active session to have the exact same ID and immutable start
+details, and asks the repository to atomically end that active ID. The
+repository accepts an exact already-ended value as a retry, but rejects a
+different active ID, changed immutable details, or changed actual end time. A
+changed actual end time is a correction and remains LIF-79 scope. These checks
+make a stale tracker an explicit failure with no local replacement and prevent
+a stale end from becoming unrelated history beside a newer active session.
+
 An exact repeated start is idempotent when the existing active Fasting Session
 has the same start and target end times. An exact repeated end is idempotent
-only for the newest ended Fasting Session with the same actual end time. A
-different end time is an actual-end-time correction, so it is rejected by this
-tracer bullet and remains LIF-79 scope.
+only when the durable ended Fasting Session has the same stable ID, immutable
+start details, and actual end time. A different end time is an actual-end-time
+correction, so it is rejected by this tracer bullet and remains LIF-79 scope.
 
 ## Consequences
 
 - A Fasting Session's stable ID is generated once by `FastingTracker`, then is
   preserved through the active and ended upserts of the same Firestore
   document.
+- `PersonalFastingActivityRepository.endActiveSession` is a narrow atomic
+  transition contract. Generic upsert remains available for the existing
+  repository seam, but this lifecycle use case does not use it to write an
+  ended historical session.
 - A second active start is rejected before a replacement tracker is exposed;
   repository conflict rejection is also returned as a non-durable outcome.
 - Ordinary application, widget, and local fasting tests stay Firebase-free by

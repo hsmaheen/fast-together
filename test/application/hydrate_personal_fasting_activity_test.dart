@@ -130,6 +130,12 @@ final class _FakePersonalFastingActivityRepository
   ) => throw UnimplementedError();
 
   @override
+  Future<PersonalFastingActivitySnapshot> endActiveSession(
+    AppAccountId accountId,
+    FastingSession endedSession,
+  ) => throw UnimplementedError();
+
+  @override
   Future<PersonalFastingActivitySnapshot> deleteEndedSession(
     AppAccountId accountId,
     FastingSessionId id,
@@ -149,6 +155,12 @@ final class _FailingPersonalFastingActivityRepository
   Future<PersonalFastingActivitySnapshot> upsert(
     AppAccountId accountId,
     FastingSession session,
+  ) => throw UnimplementedError();
+
+  @override
+  Future<PersonalFastingActivitySnapshot> endActiveSession(
+    AppAccountId accountId,
+    FastingSession endedSession,
   ) => throw UnimplementedError();
 
   @override

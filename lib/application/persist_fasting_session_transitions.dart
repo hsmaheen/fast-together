@@ -21,6 +21,7 @@ final class PersistFastingSessionTransitions {
     required FastingPlan plan,
   }) async {
     final candidate = tracker.copy();
+    FastingSession? attemptedSession;
 
     try {
       final existingActiveSession = candidate.activeSession;
@@ -37,17 +38,78 @@ final class PersistFastingSessionTransitions {
       } else {
         throw StateError('Cannot start while already Fasting');
       }
+      attemptedSession = session;
 
-      return await _persist(
+      return await _upsert(
         originalTracker: tracker,
         candidateTracker: candidate,
         session: session,
+        attemptedSession: session,
       );
     } on Object catch (error, stackTrace) {
-      return FastingSessionTransitionFailure(
+      return _failure(
         tracker: tracker,
         error: error,
         stackTrace: stackTrace,
+        attemptedSession: attemptedSession,
+      );
+    }
+  }
+
+  /// Reconciles a failed active-session start before replaying its exact
+  /// stable-ID command. The first write may have committed even though the
+  /// client did not receive its acknowledgement.
+  Future<FastingSessionTransition> retryStart(
+    FastingSessionTransitionFailure failure,
+  ) async {
+    final attemptedSession = failure.attemptedSession;
+    if (attemptedSession == null || !attemptedSession.isActive) {
+      return _failure(
+        tracker: failure.tracker,
+        error: StateError('Cannot retry a start without an active session'),
+        stackTrace: StackTrace.current,
+      );
+    }
+
+    try {
+      final appAccountSession = await _requireAppAccountSession();
+      final snapshot = await _repository.loadSnapshot(
+        appAccountSession.accountId,
+      );
+      final durableActiveSession = snapshot.activeSession;
+      if (durableActiveSession != null) {
+        if (!_sameSession(durableActiveSession, attemptedSession)) {
+          throw StateError(
+            'Cannot retry a start while another Fasting Session is active',
+          );
+        }
+
+        return PersistedFastingSessionTransition(
+          tracker: failure.tracker.withSnapshot(snapshot),
+          session: durableActiveSession,
+        );
+      }
+
+      if (snapshot.endedSessions.any(
+        (session) => session.id == attemptedSession.id,
+      )) {
+        throw StateError('Cannot retry a start for an ended Fasting Session');
+      }
+
+      final persistedSnapshot = await _repository.upsert(
+        appAccountSession.accountId,
+        attemptedSession,
+      );
+      return PersistedFastingSessionTransition(
+        tracker: failure.tracker.withSnapshot(persistedSnapshot),
+        session: attemptedSession,
+      );
+    } on Object catch (error, stackTrace) {
+      return _failure(
+        tracker: failure.tracker,
+        error: error,
+        stackTrace: stackTrace,
+        attemptedSession: attemptedSession,
       );
     }
   }
@@ -56,48 +118,53 @@ final class PersistFastingSessionTransitions {
     required FastingTracker tracker,
     required DateTime actualEndTime,
   }) async {
-    final candidate = tracker.copy();
-
     try {
-      final FastingSession session;
-      if (candidate.activeSession != null) {
-        candidate.end(actualEndTime: actualEndTime);
-        session = candidate.latestSession!;
-      } else {
-        final latestEndedSession = candidate.latestSession;
-        if (latestEndedSession == null ||
-            latestEndedSession.actualEndTime != actualEndTime) {
-          throw StateError('Cannot end while Not Fasting');
-        }
-        session = latestEndedSession;
+      final appAccountSession = await _requireAppAccountSession();
+      final snapshot = await _repository.loadSnapshot(
+        appAccountSession.accountId,
+      );
+      final durableActiveSession = snapshot.activeSession;
+      final localActiveSession = tracker.activeSession;
+
+      if (durableActiveSession == null) {
+        return _reconcileEndedRetry(
+          tracker: tracker,
+          snapshot: snapshot,
+          actualEndTime: actualEndTime,
+        );
       }
-      return await _persist(
-        originalTracker: tracker,
-        candidateTracker: candidate,
-        session: session,
+
+      if (localActiveSession == null ||
+          !_sameSession(localActiveSession, durableActiveSession)) {
+        throw StateError(
+          'Cannot end a Fasting Session that is not the durable active session',
+        );
+      }
+
+      final candidate = tracker.withSnapshot(snapshot);
+      candidate.end(actualEndTime: actualEndTime);
+      final endedSession = candidate.latestSession!;
+      final persistedSnapshot = await _repository.endActiveSession(
+        appAccountSession.accountId,
+        endedSession,
+      );
+      return PersistedFastingSessionTransition(
+        tracker: tracker.withSnapshot(persistedSnapshot),
+        session: endedSession,
       );
     } on Object catch (error, stackTrace) {
-      return FastingSessionTransitionFailure(
-        tracker: tracker,
-        error: error,
-        stackTrace: stackTrace,
-      );
+      return _failure(tracker: tracker, error: error, stackTrace: stackTrace);
     }
   }
 
-  Future<FastingSessionTransition> _persist({
+  Future<FastingSessionTransition> _upsert({
     required FastingTracker originalTracker,
     required FastingTracker candidateTracker,
     required FastingSession session,
+    FastingSession? attemptedSession,
   }) async {
     try {
-      final appAccountSession = await _appAccountSessionProvider
-          .currentSession();
-      if (appAccountSession == null) {
-        throw StateError(
-          'Cannot persist a Fasting Session without an App Account session',
-        );
-      }
+      final appAccountSession = await _requireAppAccountSession();
 
       final snapshot = await _repository.upsert(
         appAccountSession.accountId,
@@ -108,12 +175,51 @@ final class PersistFastingSessionTransitions {
         session: session,
       );
     } on Object catch (error, stackTrace) {
-      return FastingSessionTransitionFailure(
+      return _failure(
         tracker: originalTracker,
         error: error,
         stackTrace: stackTrace,
+        attemptedSession: attemptedSession,
       );
     }
+  }
+
+  Future<AppAccountSession> _requireAppAccountSession() async {
+    final appAccountSession = await _appAccountSessionProvider.currentSession();
+    if (appAccountSession == null) {
+      throw StateError(
+        'Cannot persist a Fasting Session without an App Account session',
+      );
+    }
+
+    return appAccountSession;
+  }
+
+  FastingSessionTransition _reconcileEndedRetry({
+    required FastingTracker tracker,
+    required PersonalFastingActivitySnapshot snapshot,
+    required DateTime actualEndTime,
+  }) {
+    final localSession = tracker.activeSession ?? tracker.latestSession;
+    if (localSession == null) {
+      throw StateError('Cannot end while Not Fasting');
+    }
+
+    final durableEndedSession = snapshot.endedSessions
+        .where((session) => session.id == localSession.id)
+        .firstOrNull;
+    if (durableEndedSession == null ||
+        !_sameLifecycle(localSession, durableEndedSession) ||
+        durableEndedSession.actualEndTime != actualEndTime) {
+      throw StateError(
+        'Cannot correct or end a Fasting Session outside durable activity',
+      );
+    }
+
+    return PersistedFastingSessionTransition(
+      tracker: tracker.withSnapshot(snapshot),
+      session: durableEndedSession,
+    );
   }
 }
 
@@ -137,10 +243,26 @@ final class FastingSessionTransitionFailure extends FastingSessionTransition {
     required FastingTracker tracker,
     required this.error,
     required this.stackTrace,
+    this.attemptedSession,
   }) : super(tracker);
 
   final Object error;
   final StackTrace stackTrace;
+  final FastingSession? attemptedSession;
+}
+
+FastingSessionTransitionFailure _failure({
+  required FastingTracker tracker,
+  required Object error,
+  required StackTrace stackTrace,
+  FastingSession? attemptedSession,
+}) {
+  return FastingSessionTransitionFailure(
+    tracker: tracker,
+    error: error,
+    stackTrace: stackTrace,
+    attemptedSession: attemptedSession,
+  );
 }
 
 bool _matchesStart(
@@ -150,4 +272,15 @@ bool _matchesStart(
 }) {
   return session.startTime == startTime &&
       session.targetEndTime == plan.targetEndTimeFrom(startTime);
+}
+
+bool _sameSession(FastingSession left, FastingSession right) {
+  return _sameLifecycle(left, right) &&
+      left.actualEndTime == right.actualEndTime;
+}
+
+bool _sameLifecycle(FastingSession left, FastingSession right) {
+  return left.id == right.id &&
+      left.startTime == right.startTime &&
+      left.targetEndTime == right.targetEndTime;
 }

@@ -117,7 +117,7 @@ void main() {
     ]);
   });
 
-  test('repeats the same end as an idempotent durable upsert', () async {
+  test('repeats the same end by reconciling durable ended activity', () async {
     final repository = _InMemoryPersonalFastingActivityRepository();
     final transitions = PersistFastingSessionTransitions(
       _FakeAppAccountSessionProvider(
@@ -154,7 +154,7 @@ void main() {
       repeated.tracker.recentEndedSessions.single.id.value,
       'stable-session-id',
     );
-    expect(repository.upsertedSessions, hasLength(3));
+    expect(repository.upsertedSessions, hasLength(2));
     expect(repository.upsertedSessions.last.actualEndTime, actualEndTime);
   });
 
@@ -291,6 +291,167 @@ void main() {
       expect(repository.snapshot.activeSession?.id.value, 'stable-session-id');
     },
   );
+
+  test(
+    'reconciles a start that committed before reporting a persistence error',
+    () async {
+      final repository = _CommitThenThrowPersonalFastingActivityRepository();
+      final transitions = PersistFastingSessionTransitions(
+        _FakeAppAccountSessionProvider(
+          AppAccountSession(AppAccountId('app-account')),
+        ),
+        repository,
+      );
+
+      final firstAttempt = await transitions.start(
+        tracker: FastingTracker(
+          nowUtc: () => DateTime.utc(2026, 7, 20),
+          newSessionId: () => FastingSessionId('stable-session-id'),
+        ),
+        startTime: DateTime.utc(2026, 7, 18, 8),
+        plan: FastingPlan.sixteenHours,
+      );
+
+      expect(firstAttempt, isA<FastingSessionTransitionFailure>());
+      final failedStart = firstAttempt as FastingSessionTransitionFailure;
+      expect(failedStart.attemptedSession?.id.value, 'stable-session-id');
+      expect(failedStart.tracker.status, FastingStatus.notFasting);
+
+      final reconciled = await transitions.retryStart(failedStart);
+
+      expect(reconciled, isA<PersistedFastingSessionTransition>());
+      expect(reconciled.tracker.activeSession?.id.value, 'stable-session-id');
+      expect(repository.upsertedSessions, hasLength(1));
+    },
+  );
+
+  test(
+    'rejects ending a stale local active session when durable activity has another active session',
+    () async {
+      final localActive = FastingSession(
+        id: FastingSessionId('local-active'),
+        startTime: DateTime.utc(2026, 7, 18, 8),
+        targetEndTime: DateTime.utc(2026, 7, 19, 0),
+      );
+      final durableActive = FastingSession(
+        id: FastingSessionId('durable-active'),
+        startTime: DateTime.utc(2026, 7, 18, 9),
+        targetEndTime: DateTime.utc(2026, 7, 19, 1),
+      );
+      final repository = _InMemoryPersonalFastingActivityRepository(
+        PersonalFastingActivitySnapshot(activeSession: durableActive),
+      );
+      final tracker = FastingTracker.fromSnapshot(
+        snapshot: PersonalFastingActivitySnapshot(activeSession: localActive),
+        nowUtc: () => DateTime.utc(2026, 7, 20),
+      );
+      final transitions = PersistFastingSessionTransitions(
+        _FakeAppAccountSessionProvider(
+          AppAccountSession(AppAccountId('app-account')),
+        ),
+        repository,
+      );
+
+      final outcome = await transitions.end(
+        tracker: tracker,
+        actualEndTime: DateTime.utc(2026, 7, 18, 20),
+      );
+
+      expect(outcome, isA<FastingSessionTransitionFailure>());
+      expect(outcome.tracker, same(tracker));
+      expect(outcome.tracker.activeSession?.id.value, 'local-active');
+      expect(repository.snapshot.activeSession?.id.value, 'durable-active');
+      expect(repository.upsertedSessions, isEmpty);
+    },
+  );
+
+  test(
+    'reconciles an exact end retry from the durable ended Fasting Session',
+    () async {
+      final endedSession = FastingSession(
+        id: FastingSessionId('stable-session-id'),
+        startTime: DateTime.utc(2026, 7, 18, 8),
+        targetEndTime: DateTime.utc(2026, 7, 19),
+        actualEndTime: DateTime.utc(2026, 7, 18, 20),
+      );
+      final repository = _InMemoryPersonalFastingActivityRepository(
+        PersonalFastingActivitySnapshot(endedSessions: [endedSession]),
+      );
+      final staleActiveTracker = FastingTracker.fromSnapshot(
+        snapshot: PersonalFastingActivitySnapshot(
+          activeSession: FastingSession(
+            id: endedSession.id,
+            startTime: endedSession.startTime,
+            targetEndTime: endedSession.targetEndTime,
+          ),
+        ),
+        nowUtc: () => DateTime.utc(2026, 7, 20),
+      );
+      final transitions = PersistFastingSessionTransitions(
+        _FakeAppAccountSessionProvider(
+          AppAccountSession(AppAccountId('app-account')),
+        ),
+        repository,
+      );
+
+      final outcome = await transitions.end(
+        tracker: staleActiveTracker,
+        actualEndTime: endedSession.actualEndTime!,
+      );
+
+      expect(outcome, isA<PersistedFastingSessionTransition>());
+      final persisted = outcome as PersistedFastingSessionTransition;
+      expect(persisted.session.id, endedSession.id);
+      expect(persisted.session.actualEndTime, endedSession.actualEndTime);
+      expect(persisted.tracker.activeSession, isNull);
+      expect(persisted.tracker.recentEndedSessions, hasLength(1));
+      expect(repository.upsertedSessions, isEmpty);
+    },
+  );
+
+  test(
+    'rejects an end retry whose timestamp would correct durable ended activity',
+    () async {
+      final endedSession = FastingSession(
+        id: FastingSessionId('stable-session-id'),
+        startTime: DateTime.utc(2026, 7, 18, 8),
+        targetEndTime: DateTime.utc(2026, 7, 19),
+        actualEndTime: DateTime.utc(2026, 7, 18, 20),
+      );
+      final repository = _InMemoryPersonalFastingActivityRepository(
+        PersonalFastingActivitySnapshot(endedSessions: [endedSession]),
+      );
+      final staleActiveTracker = FastingTracker.fromSnapshot(
+        snapshot: PersonalFastingActivitySnapshot(
+          activeSession: FastingSession(
+            id: endedSession.id,
+            startTime: endedSession.startTime,
+            targetEndTime: endedSession.targetEndTime,
+          ),
+        ),
+        nowUtc: () => DateTime.utc(2026, 7, 20),
+      );
+      final transitions = PersistFastingSessionTransitions(
+        _FakeAppAccountSessionProvider(
+          AppAccountSession(AppAccountId('app-account')),
+        ),
+        repository,
+      );
+
+      final outcome = await transitions.end(
+        tracker: staleActiveTracker,
+        actualEndTime: DateTime.utc(2026, 7, 18, 21),
+      );
+
+      expect(outcome, isA<FastingSessionTransitionFailure>());
+      expect(outcome.tracker, same(staleActiveTracker));
+      expect(
+        repository.snapshot.endedSessions.single.actualEndTime,
+        endedSession.actualEndTime,
+      );
+      expect(repository.upsertedSessions, isEmpty);
+    },
+  );
 }
 
 final class _FakeAppAccountSessionProvider
@@ -343,6 +504,31 @@ final class _InMemoryPersonalFastingActivityRepository
   }
 
   @override
+  Future<PersonalFastingActivitySnapshot> endActiveSession(
+    AppAccountId accountId,
+    FastingSession endedSession,
+  ) async {
+    final activeSession = _snapshot.activeSession;
+    if (activeSession?.id == endedSession.id &&
+        activeSession?.startTime == endedSession.startTime &&
+        activeSession?.targetEndTime == endedSession.targetEndTime) {
+      return upsert(accountId, endedSession);
+    }
+
+    final persistedEndedSession = _snapshot.endedSessions
+        .where((session) => session.id == endedSession.id)
+        .firstOrNull;
+    if (persistedEndedSession != null &&
+        persistedEndedSession.startTime == endedSession.startTime &&
+        persistedEndedSession.targetEndTime == endedSession.targetEndTime &&
+        persistedEndedSession.actualEndTime == endedSession.actualEndTime) {
+      return _snapshot;
+    }
+
+    throw StateError('Cannot end a Fasting Session outside durable activity');
+  }
+
+  @override
   Future<PersonalFastingActivitySnapshot> deleteEndedSession(
     AppAccountId accountId,
     FastingSessionId id,
@@ -366,6 +552,52 @@ final class _FailingPersonalFastingActivityRepository
     AppAccountId accountId,
     FastingSession session,
   ) => Future.error(StateError('Firestore unavailable'));
+
+  @override
+  Future<PersonalFastingActivitySnapshot> endActiveSession(
+    AppAccountId accountId,
+    FastingSession endedSession,
+  ) => Future.error(StateError('Firestore unavailable'));
+
+  @override
+  Future<PersonalFastingActivitySnapshot> deleteEndedSession(
+    AppAccountId accountId,
+    FastingSessionId id,
+  ) => throw UnimplementedError();
+}
+
+final class _CommitThenThrowPersonalFastingActivityRepository
+    implements PersonalFastingActivityRepository {
+  PersonalFastingActivitySnapshot _snapshot = PersonalFastingActivitySnapshot();
+  final upsertedSessions = <FastingSession>[];
+  var _shouldThrowAfterCommit = true;
+
+  @override
+  Future<PersonalFastingActivitySnapshot> loadSnapshot(
+    AppAccountId accountId,
+  ) async {
+    return _snapshot;
+  }
+
+  @override
+  Future<PersonalFastingActivitySnapshot> upsert(
+    AppAccountId accountId,
+    FastingSession session,
+  ) async {
+    upsertedSessions.add(session);
+    _snapshot = _snapshot.upsert(session);
+    if (_shouldThrowAfterCommit) {
+      _shouldThrowAfterCommit = false;
+      throw StateError('Firestore acknowledgement was lost');
+    }
+    return _snapshot;
+  }
+
+  @override
+  Future<PersonalFastingActivitySnapshot> endActiveSession(
+    AppAccountId accountId,
+    FastingSession endedSession,
+  ) => throw UnimplementedError();
 
   @override
   Future<PersonalFastingActivitySnapshot> deleteEndedSession(
