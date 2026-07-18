@@ -32,6 +32,13 @@ Account for the emulator test flow. This is test plumbing only, not a
 production sign-in provider. The production Google and Apple directions remain
 defined by ADR 0003 and must get their own production configuration slice.
 
+`signInOrCreateForLocalEmulator` always establishes that deterministic session
+with the current Auth Emulator. It does not treat a cached Firebase Auth user
+as proof that the restarted emulator still recognizes the account: it signs in
+first and creates the account only when the emulator reports it absent. This
+makes device credentials left by an earlier test run harmless after a fresh
+Auth Emulator start.
+
 ## App Account seam and verification
 
 Application callers receive `AppAccountSessionProvider`,
@@ -43,6 +50,11 @@ The device-level test starts an Auth Emulator App Account and reads
 source. This verifies the owner-only read contract from ADR 0017 without
 introducing Personal Fasting Activity persistence or changing Firebase-free
 unit, widget, or local fasting integration tests.
+
+The regression test clears Auth Emulator accounts while the device still has
+the prior credential, then requires bootstrap to obtain a fresh token before
+the owner-scoped Firestore read. This keeps the local adapter proof repeatable
+across emulator restarts without adding production authentication behavior.
 
 Current Firebase iOS SDK dependencies require iOS 15, so the iOS deployment
 target is raised to 15.0. Android and iOS Simulator are the supported local
