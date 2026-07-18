@@ -182,10 +182,11 @@ final class PersistFastingSessionCorrectionsAndDeletions {
       final snapshot = await _repository.loadSnapshot(
         attemptedDeletion.accountId,
       );
-      final durableSession = _endedSessionWithId(
-        snapshot,
-        attemptedDeletion.expectedSession.id,
-      );
+      final activeSession = snapshot.activeSession;
+      final durableSession =
+          activeSession?.id == attemptedDeletion.expectedSession.id
+          ? activeSession
+          : _endedSessionWithId(snapshot, attemptedDeletion.expectedSession.id);
       if (durableSession == null) {
         return PersistedFastingSessionMutation(
           tracker: failure.tracker.withSnapshot(snapshot),

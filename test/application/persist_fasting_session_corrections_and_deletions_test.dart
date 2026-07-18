@@ -324,6 +324,51 @@ void main() {
     },
   );
 
+  test(
+    'rejects a lost-acknowledgement deletion retry when the ID is durable active',
+    () async {
+      final accountId = AppAccountId('app-account');
+      final original = _endedSession(
+        id: 'reused-after-deletion',
+        actualEndTime: DateTime.utc(2026, 7, 19, 8),
+      );
+      final repository = _InMemoryPersonalFastingActivityRepository(
+        PersonalFastingActivitySnapshot(endedSessions: [original]),
+      )..throwAfterNextDeletion = true;
+      final mutations = PersistFastingSessionCorrectionsAndDeletions(
+        _FakeAppAccountSessionProvider(AppAccountSession(accountId)),
+        repository,
+      );
+      final tracker = FastingTracker.fromSnapshot(
+        snapshot: PersonalFastingActivitySnapshot(endedSessions: [original]),
+        nowUtc: () => DateTime.utc(2026, 7, 20),
+      );
+
+      final firstAttempt = await mutations.deleteEndedSession(
+        tracker: tracker,
+        id: original.id,
+      );
+      final reusedActiveSession = FastingSession(
+        id: original.id,
+        startTime: original.startTime,
+        targetEndTime: original.targetEndTime,
+      );
+      repository.snapshot = PersonalFastingActivitySnapshot(
+        activeSession: reusedActiveSession,
+      );
+
+      final retried = await mutations.retryDeletion(
+        firstAttempt as FastingSessionMutationFailure,
+      );
+
+      expect(retried, isA<FastingSessionMutationFailure>());
+      expect(retried.tracker, same(tracker));
+      expect(repository.snapshot.activeSession, reusedActiveSession);
+      expect(repository.snapshot.endedSessions, isEmpty);
+      expect(repository.deletionWrites, 1);
+    },
+  );
+
   test('rejects a correction retry after the App Account changes', () async {
     final accountA = AppAccountId('account-a');
     final accountB = AppAccountId('account-b');
