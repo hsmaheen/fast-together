@@ -76,6 +76,7 @@ the bootstrap proof on an iOS Simulator or Android Emulator:
 flutter devices
 flutter test integration_test/firebase_emulator_app_account_bootstrap_test.dart -d <device-id>
 flutter test integration_test/personal_fasting_activity_firestore_adapter_test.dart -d <device-id>
+flutter test integration_test/personal_fasting_activity_hydration_test.dart -d <device-id>
 ```
 
 The composition root connects both clients before any Auth or Firestore
