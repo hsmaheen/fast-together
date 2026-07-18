@@ -53,6 +53,25 @@ class FastingTracker {
 
   FastingSession? get activeSession => _activeSession;
 
+  /// Returns a replacement tracker backed by [snapshot] while preserving this
+  /// tracker's application clock and Fasting Session ID generation.
+  FastingTracker withSnapshot(PersonalFastingActivitySnapshot snapshot) {
+    return FastingTracker.fromSnapshot(
+      snapshot: snapshot,
+      nowUtc: _nowUtc,
+      newSessionId: _newSessionId,
+    );
+  }
+
+  FastingTracker copy() {
+    return withSnapshot(
+      PersonalFastingActivitySnapshot(
+        activeSession: _activeSession,
+        endedSessions: _recentEndedSessions,
+      ),
+    );
+  }
+
   List<DailyFastingTotal> dailyFastingTotals({
     DateTime Function(DateTime time)? localTimeFor,
   }) {

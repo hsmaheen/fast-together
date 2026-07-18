@@ -150,6 +150,55 @@ final class FirestorePersonalFastingActivityRepository
   }
 
   @override
+  Future<PersonalFastingActivitySnapshot> endActiveSession(
+    AppAccountId accountId,
+    FastingSession endedSession,
+  ) async {
+    if (endedSession.isActive) {
+      throw ArgumentError.value(endedSession, 'endedSession', 'must be ended');
+    }
+
+    final ownerAccountId = _ownerAccountIdFor(accountId);
+    await _loadSnapshot(ownerAccountId);
+    final sessionDocument = _fastingSessions(
+      ownerAccountId,
+    ).doc(endedSession.id.value);
+    final activityState = _activityState(ownerAccountId);
+
+    await _firestore.runTransaction<void>((transaction) async {
+      final stateDocument = await transaction.get(activityState);
+      final persistedSessionDocument = await transaction.get(sessionDocument);
+      final activeSessionId = _activeSessionIdFromState(stateDocument);
+      final persistedSession = persistedSessionDocument.exists
+          ? _sessionFromDocument(persistedSessionDocument)
+          : null;
+
+      if (activeSessionId == endedSession.id.value) {
+        if (persistedSession == null ||
+            !persistedSession.isActive ||
+            !_sameLifecycle(persistedSession, endedSession)) {
+          throw StateError('Durable active Fasting Session does not match');
+        }
+
+        transaction.delete(activityState);
+        transaction.set(sessionDocument, _documentDataFor(endedSession));
+        return;
+      }
+
+      if (activeSessionId == null &&
+          persistedSession != null &&
+          !persistedSession.isActive &&
+          _sameSession(persistedSession, endedSession)) {
+        return;
+      }
+
+      throw StateError('Cannot end a Fasting Session outside durable activity');
+    });
+
+    return loadSnapshot(ownerAccountId);
+  }
+
+  @override
   Future<PersonalFastingActivitySnapshot> deleteEndedSession(
     AppAccountId accountId,
     FastingSessionId id,
@@ -287,4 +336,15 @@ DateTime _timestampFor(
   }
 
   return value.toDate().toUtc();
+}
+
+bool _sameSession(FastingSession left, FastingSession right) {
+  return _sameLifecycle(left, right) &&
+      left.actualEndTime == right.actualEndTime;
+}
+
+bool _sameLifecycle(FastingSession left, FastingSession right) {
+  return left.id == right.id &&
+      left.startTime == right.startTime &&
+      left.targetEndTime == right.targetEndTime;
 }

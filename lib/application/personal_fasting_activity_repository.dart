@@ -27,6 +27,15 @@ abstract interface class PersonalFastingActivityRepository {
     FastingSession session,
   );
 
+  /// Atomically ends the currently active Fasting Session only when it has the
+  /// same stable ID and immutable start details as [endedSession]. Repeating
+  /// the exact already-ended session returns the existing snapshot. A changed
+  /// actual end time is a correction and is rejected.
+  Future<PersonalFastingActivitySnapshot> endActiveSession(
+    AppAccountId accountId,
+    FastingSession endedSession,
+  );
+
   /// Atomically applies [PersonalFastingActivitySnapshot.deleteEndedSession]
   /// and returns the resulting snapshot. It throws [StateError] when [id]
   /// identifies the active session or no ended Fasting Session.
