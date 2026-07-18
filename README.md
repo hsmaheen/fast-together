@@ -75,6 +75,7 @@ the bootstrap proof on an iOS Simulator or Android Emulator:
 ```sh
 flutter devices
 flutter test integration_test/firebase_emulator_app_account_bootstrap_test.dart -d <device-id>
+flutter test integration_test/personal_fasting_activity_firestore_adapter_test.dart -d <device-id>
 ```
 
 The composition root connects both clients before any Auth or Firestore
@@ -83,3 +84,7 @@ operation. Its default routes are `127.0.0.1` for the iOS Simulator and
 local host and ports for either route, but rejects remote hosts so this root
 cannot be pointed at a production service. Physical-device routing and
 production Google or Apple sign-in are not part of this bootstrap.
+
+On Android, the debug manifest permits cleartext traffic only for the local
+Auth and Firestore emulator route. Release builds retain the default platform
+network policy.

@@ -10,14 +10,10 @@ import {
   getDoc,
   getDocs,
   setDoc,
+  writeBatch,
 } from 'firebase/firestore';
-import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { after, before, beforeEach, test } from 'node:test';
-import {
-  loadEndedFastingSessions,
-  saveEndedFastingSession,
-} from './personal_fasting_activity_repository.mjs';
 
 let testEnv;
 
@@ -49,48 +45,40 @@ test('Personal Fasting Activity is readable and writable by its owner', async ()
 
   await assertSucceeds(
     setDoc(sessionRef, {
-      startedAt: Timestamp.fromDate(new Date('2026-07-01T08:00:00Z')),
-      targetEndedAt: Timestamp.fromDate(new Date('2026-07-02T00:00:00Z')),
-      actualEndedAt: Timestamp.fromDate(new Date('2026-07-02T00:00:00Z')),
-      fastingResult: 'Completed',
+      startTime: Timestamp.fromDate(new Date('2026-07-01T08:00:00Z')),
+      targetEndTime: Timestamp.fromDate(new Date('2026-07-02T00:00:00Z')),
+      actualEndTime: Timestamp.fromDate(new Date('2026-07-02T00:00:00Z')),
     }),
   );
   await assertSucceeds(getDoc(sessionRef));
 });
 
-test('signed-in owner can save and load an ended Fasting Session', async () => {
+test('an active Fasting Session requires an atomic owner state write', async () => {
   const ownerDb = testEnv.authenticatedContext('owner-user').firestore();
-  const endedSession = {
-    id: 'session-1',
-    startTime: new Date('2026-07-01T08:00:00Z'),
-    targetEndTime: new Date('2026-07-02T00:00:00Z'),
-    actualEndTime: new Date('2026-07-02T01:30:00Z'),
-    fastingResult: 'Completed',
+  const sessionRef = doc(
+    ownerDb,
+    'appAccounts/owner-user/fastingSessions/session-1',
+  );
+  const stateRef = doc(
+    ownerDb,
+    'appAccounts/owner-user/personalFastingActivity/current',
+  );
+  const activeSession = {
+    startTime: Timestamp.fromDate(new Date('2026-07-01T08:00:00Z')),
+    targetEndTime: Timestamp.fromDate(new Date('2026-07-02T00:00:00Z')),
   };
 
+  await assertFails(setDoc(sessionRef, activeSession));
+
+  const batch = writeBatch(ownerDb);
+  batch.set(sessionRef, activeSession);
+  batch.set(stateRef, { activeSessionId: 'session-1' });
   await assertSucceeds(
-    saveEndedFastingSession({
-      db: ownerDb,
-      ownerUid: 'owner-user',
-      session: endedSession,
-    }),
-  );
-  const savedSession = await getDoc(
-    doc(ownerDb, 'appAccounts/owner-user/fastingSessions/session-1'),
+    batch.commit(),
   );
 
-  await assertSucceeds(
-    loadEndedFastingSessions({ db: ownerDb, ownerUid: 'owner-user' }),
-  );
-  const loadedSessions = await loadEndedFastingSessions({
-    db: ownerDb,
-    ownerUid: 'owner-user',
-  });
-
-  assert.equal(savedSession.get('startedAt') instanceof Timestamp, true);
-  assert.equal(savedSession.get('targetEndedAt') instanceof Timestamp, true);
-  assert.equal(savedSession.get('actualEndedAt') instanceof Timestamp, true);
-  assert.deepStrictEqual(loadedSessions, [endedSession]);
+  await assertSucceeds(getDoc(sessionRef));
+  await assertSucceeds(getDoc(stateRef));
 });
 
 test('Personal Fasting Activity rejects unauthenticated access', async () => {
@@ -103,7 +91,9 @@ test('Personal Fasting Activity rejects unauthenticated access', async () => {
   await assertFails(getDoc(sessionRef));
   await assertFails(
     setDoc(sessionRef, {
-      startedAt: Timestamp.fromDate(new Date('2026-07-01T08:00:00Z')),
+      startTime: Timestamp.fromDate(new Date('2026-07-01T08:00:00Z')),
+      targetEndTime: Timestamp.fromDate(new Date('2026-07-02T00:00:00Z')),
+      actualEndTime: Timestamp.fromDate(new Date('2026-07-02T00:00:00Z')),
     }),
   );
 });
@@ -118,7 +108,9 @@ test('Personal Fasting Activity rejects a different signed-in user', async () =>
   await assertFails(getDoc(sessionRef));
   await assertFails(
     setDoc(sessionRef, {
-      startedAt: Timestamp.fromDate(new Date('2026-07-01T08:00:00Z')),
+      startTime: Timestamp.fromDate(new Date('2026-07-01T08:00:00Z')),
+      targetEndTime: Timestamp.fromDate(new Date('2026-07-02T00:00:00Z')),
+      actualEndTime: Timestamp.fromDate(new Date('2026-07-02T00:00:00Z')),
     }),
   );
   await assertFails(

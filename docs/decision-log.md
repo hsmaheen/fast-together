@@ -84,3 +84,4 @@ Links: `docs/adr/0021-use-demo-only-flutterfire-emulator-bootstrap.md`, LIF-75
 - `0019` - Use trusted transactions for Circle Membership limits
 - `0020` - Use stable Fasting Session identity and Personal Fasting Activity repository seam
 - `0021` - Use demo-only FlutterFire emulator bootstrap
+- `0022` - Use an active-session sentinel for Personal Fasting Activity
