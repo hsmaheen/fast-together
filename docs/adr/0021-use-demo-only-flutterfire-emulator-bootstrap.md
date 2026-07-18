@@ -17,8 +17,9 @@ request fails instead of reaching a production project.
 
 - The iOS Simulator connects to local emulators at `127.0.0.1`.
 - The Android Emulator connects to the host machine at `10.0.2.2`.
-- The Android debug manifest permits cleartext traffic only for this local
-  emulator route; release builds retain the platform default.
+- The Android debug network-security configuration permits cleartext traffic
+  only to the `10.0.2.2` emulator host; release builds retain the platform
+  default.
 - Auth defaults to port `9099`; Firestore defaults to port `8080`.
 - Callers may configure those local hosts and ports through
   `FirebaseEmulatorHosts`, but remote hosts are rejected.

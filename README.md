@@ -85,6 +85,6 @@ local host and ports for either route, but rejects remote hosts so this root
 cannot be pointed at a production service. Physical-device routing and
 production Google or Apple sign-in are not part of this bootstrap.
 
-On Android, the debug manifest permits cleartext traffic only for the local
-Auth and Firestore emulator route. Release builds retain the default platform
-network policy.
+On Android, the debug network-security configuration permits cleartext traffic
+only to the `10.0.2.2` Auth and Firestore emulator host. Release builds retain
+the default platform network policy.

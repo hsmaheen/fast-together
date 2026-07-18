@@ -11,6 +11,10 @@ void main() {
       expect(() => FastingSessionId(''), throwsArgumentError);
     });
 
+    test('rejects an ID containing a Firestore path separator', () {
+      expect(() => FastingSessionId('session/part'), throwsArgumentError);
+    });
+
     test('preserves its ID when it ends', () {
       final id = FastingSessionId('session-1');
       final session = FastingSession.start(

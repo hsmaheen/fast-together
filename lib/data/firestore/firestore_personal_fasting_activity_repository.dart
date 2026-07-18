@@ -23,7 +23,16 @@ final class FirestorePersonalFastingActivityRepository
     AppAccountId accountId,
   ) async {
     final ownerAccountId = _ownerAccountIdFor(accountId);
+    return _loadSnapshot(ownerAccountId);
+  }
+
+  Future<PersonalFastingActivitySnapshot> _loadSnapshot(
+    AppAccountId ownerAccountId,
+  ) async {
     final documents = await _fastingSessions(
+      ownerAccountId,
+    ).get(const GetOptions(source: Source.server));
+    final stateDocument = await _activityState(
       ownerAccountId,
     ).get(const GetOptions(source: Source.server));
     final sessions = documents.docs.map(_sessionFromDocument).toList();
@@ -35,6 +44,18 @@ final class FirestorePersonalFastingActivityRepository
       throw StateError(
         'Personal Fasting Activity has multiple active sessions',
       );
+    }
+    if (activeSessions.isNotEmpty && !stateDocument.exists) {
+      throw StateError('Active Fasting Session is missing its activity state');
+    }
+    if (activeSessions case [final activeSession]) {
+      final activeSessionId = _activeSessionIdFromState(stateDocument);
+      if (activeSessionId != activeSession.id.value) {
+        throw StateError('Activity state does not match the active Fasting Session');
+      }
+    }
+    if (activeSessions.isEmpty && stateDocument.exists) {
+      throw StateError('Inactive Personal Fasting Activity has activity state');
     }
 
     return PersonalFastingActivitySnapshot(
@@ -49,6 +70,7 @@ final class FirestorePersonalFastingActivityRepository
     FastingSession session,
   ) async {
     final ownerAccountId = _ownerAccountIdFor(accountId);
+    await _loadSnapshot(ownerAccountId);
     final sessionDocument = _fastingSessions(
       ownerAccountId,
     ).doc(session.id.value);
@@ -99,6 +121,7 @@ final class FirestorePersonalFastingActivityRepository
     FastingSessionId id,
   ) async {
     final ownerAccountId = _ownerAccountIdFor(accountId);
+    await _loadSnapshot(ownerAccountId);
     final sessionDocument = _fastingSessions(ownerAccountId).doc(id.value);
     final activityState = _activityState(ownerAccountId);
 

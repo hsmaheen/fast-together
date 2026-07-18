@@ -6,6 +6,8 @@ Session ends or its actual end time is corrected. The application layer owns
 new-ID creation through an injected generator in `FastingTracker`; the domain
 does not create IDs from wall-clock time or Firebase code. The default local
 generator produces opaque random IDs, while tests inject deterministic values.
+Because the Firestore adapter uses this value as a document-ID segment, an ID
+is non-empty and cannot contain `/`.
 
 Personal Fasting Activity is represented at the application seam by
 `PersonalFastingActivitySnapshot`: one optional active Fasting Session plus

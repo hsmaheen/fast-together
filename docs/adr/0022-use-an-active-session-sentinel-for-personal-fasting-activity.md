@@ -20,11 +20,19 @@ also owns `appAccounts/{uid}/personalFastingActivity/current`. When an active
 Fasting Session exists, this private owner-only sentinel contains exactly its
 `activeSessionId`; it is absent otherwise.
 
+Every server-source snapshot read validates the sentinel with the hydrated
+sessions: no active Fasting Session requires no sentinel; one active Fasting
+Session requires the exact one-field sentinel naming that session. A missing,
+stale, mismatched, or malformed sentinel is corrupted Personal Fasting
+Activity and is rejected. The adapter does not silently repair it.
+
 ## Transaction semantics
 
 Each repository write first verifies that the requested `AppAccountId` is the
 authenticated `AppAccountSession` identity. Callers therefore cannot choose a
-different account path.
+different account path. It performs the validated snapshot read before opening
+a transaction, so corrupted legacy state is rejected before a write can mutate
+Personal Fasting Activity.
 
 An active-session upsert reads the sentinel and its target document. It creates
 the sentinel when none exists, permits a repeat for the same ID, and rejects a

@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:fasting_app/application/app_account_session.dart';
 import 'package:fasting_app/application/personal_fasting_activity_repository.dart';
@@ -5,6 +8,7 @@ import 'package:fasting_app/data/firebase_emulator/firebase_emulator_app.dart';
 import 'package:fasting_app/data/firestore/firestore_personal_fasting_activity_repository.dart';
 import 'package:fasting_app/domain/fasting_session.dart';
 import 'package:fasting_app/domain/fasting_session_id.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 
@@ -255,6 +259,154 @@ void main() {
 
     await _clearPersonalFastingActivity(repository, session.accountId);
   });
+
+  testWidgets(
+    'rejects a missing active-session sentinel before loading or upserting',
+    (tester) async {
+      await _clearFirestoreForTest();
+      final orphanedActiveSession = FastingSession(
+        id: FastingSessionId('legacy-active-without-state'),
+        startTime: DateTime.utc(2026, 7, 18, 8),
+        targetEndTime: DateTime.utc(2026, 7, 19, 8),
+      );
+      final attemptedActiveSession = FastingSession(
+        id: FastingSessionId('attempted-active-after-legacy-state'),
+        startTime: DateTime.utc(2026, 7, 18, 9),
+        targetEndTime: DateTime.utc(2026, 7, 19, 9),
+      );
+      await _seedFastingSession(session.accountId, orphanedActiveSession);
+
+      try {
+        await expectLater(
+          repository.loadSnapshot(session.accountId),
+          throwsStateError,
+        );
+        await expectLater(
+          repository.upsert(session.accountId, attemptedActiveSession),
+          throwsStateError,
+        );
+
+        await _seedActiveSessionState(
+          session.accountId,
+          orphanedActiveSession.id.value,
+        );
+        final repairedSnapshot = await repository.loadSnapshot(
+          session.accountId,
+        );
+
+        expect(repairedSnapshot.activeSession?.id, orphanedActiveSession.id);
+        expect(repairedSnapshot.endedSessions, isEmpty);
+      } finally {
+        await _clearFirestoreForTest();
+      }
+    },
+  );
+
+  testWidgets('rejects a stale sentinel without an active Fasting Session', (
+    tester,
+  ) async {
+    await _clearFirestoreForTest();
+    await _seedActiveSessionState(
+      session.accountId,
+      'missing-legacy-active-session',
+    );
+
+    try {
+      await expectLater(
+        repository.loadSnapshot(session.accountId),
+        throwsStateError,
+      );
+    } finally {
+      await _clearFirestoreForTest();
+    }
+  });
+
+  testWidgets('rejects deletion before mutating stale Personal Fasting Activity', (
+    tester,
+  ) async {
+    await _clearFirestoreForTest();
+    final endedSession = _endedSession(
+      id: 'ended-session-with-stale-state',
+      actualEndTime: DateTime.utc(2026, 7, 18, 1),
+    );
+    await _seedFastingSession(session.accountId, endedSession);
+    await _seedActiveSessionState(
+      session.accountId,
+      'missing-legacy-active-session',
+    );
+
+    try {
+      await expectLater(
+        repository.deleteEndedSession(session.accountId, endedSession.id),
+        throwsStateError,
+      );
+
+      await _deleteDocument(
+        'appAccounts/${session.accountId.value}/personalFastingActivity/current',
+      );
+      final repairedSnapshot = await repository.loadSnapshot(
+        session.accountId,
+      );
+
+      expect(repairedSnapshot.endedSessions.single.id, endedSession.id);
+    } finally {
+      await _clearFirestoreForTest();
+    }
+  });
+
+  testWidgets('rejects a sentinel that names a different active Fasting Session', (
+    tester,
+  ) async {
+    await _clearFirestoreForTest();
+    final activeSession = FastingSession(
+      id: FastingSessionId('hydrated-active-session'),
+      startTime: DateTime.utc(2026, 7, 18, 8),
+      targetEndTime: DateTime.utc(2026, 7, 19, 8),
+    );
+    await _seedFastingSession(session.accountId, activeSession);
+    await _seedActiveSessionState(
+      session.accountId,
+      'different-active-session',
+    );
+
+    try {
+      await expectLater(
+        repository.loadSnapshot(session.accountId),
+        throwsStateError,
+      );
+    } finally {
+      await _clearFirestoreForTest();
+    }
+  });
+
+  testWidgets('rejects a malformed sentinel for the hydrated active session', (
+    tester,
+  ) async {
+    await _clearFirestoreForTest();
+    final activeSession = FastingSession(
+      id: FastingSessionId('active-session-with-malformed-state'),
+      startTime: DateTime.utc(2026, 7, 18, 8),
+      targetEndTime: DateTime.utc(2026, 7, 19, 8),
+    );
+    await _seedFastingSession(session.accountId, activeSession);
+    await _seedDocument(
+      path:
+          'appAccounts/${session.accountId.value}/personalFastingActivity/current',
+      fields: {
+        'activeSessionId': {'stringValue': activeSession.id.value},
+        'unexpectedLegacyField': {'stringValue': 'not-valid-state'},
+      },
+    );
+
+    try {
+      await expectLater(
+        repository.loadSnapshot(session.accountId),
+        throwsStateError,
+      );
+    } finally {
+      await _clearFirestoreForTest();
+    }
+  });
 }
 
 FastingSession _endedSession({
@@ -289,3 +441,103 @@ Future<void> _clearPersonalFastingActivity(
   expect(snapshot.activeSession, isNull);
   expect(snapshot.endedSessions, isEmpty);
 }
+
+Future<void> _clearFirestoreForTest() async {
+  final response = await _emulatorRequest(
+    method: 'DELETE',
+    path: '/emulator/v1/projects/demo-fasting-app/databases/(default)/documents',
+  );
+  if (response.statusCode != HttpStatus.ok) {
+    throw StateError('Could not clear the Firestore Emulator for this test');
+  }
+}
+
+Future<void> _seedFastingSession(
+  AppAccountId accountId,
+  FastingSession fastingSession,
+) async {
+  final fields = <String, Object>{
+    'startTime': {'timestampValue': fastingSession.startTime.toIso8601String()},
+    'targetEndTime': {
+      'timestampValue': fastingSession.targetEndTime.toIso8601String(),
+    },
+  };
+  final actualEndTime = fastingSession.actualEndTime;
+  if (actualEndTime != null) {
+    fields['actualEndTime'] = {
+      'timestampValue': actualEndTime.toIso8601String(),
+    };
+  }
+
+  await _seedDocument(
+    path:
+        'appAccounts/${accountId.value}/fastingSessions/${fastingSession.id.value}',
+    fields: fields,
+  );
+}
+
+Future<void> _seedActiveSessionState(
+  AppAccountId accountId,
+  String activeSessionId,
+) {
+  return _seedDocument(
+    path: 'appAccounts/${accountId.value}/personalFastingActivity/current',
+    fields: {
+      'activeSessionId': {'stringValue': activeSessionId},
+    },
+  );
+}
+
+Future<void> _seedDocument({
+  required String path,
+  required Map<String, Object> fields,
+}) async {
+  final response = await _emulatorRequest(
+    method: 'PATCH',
+    path: '/v1/projects/demo-fasting-app/databases/(default)/documents/$path',
+    body: {'fields': fields},
+  );
+  if (response.statusCode != HttpStatus.ok) {
+    throw StateError('Could not seed the Firestore Emulator for this test');
+  }
+}
+
+Future<void> _deleteDocument(String path) async {
+  final response = await _emulatorRequest(
+    method: 'DELETE',
+    path: '/v1/projects/demo-fasting-app/databases/(default)/documents/$path',
+  );
+  if (response.statusCode != HttpStatus.ok) {
+    throw StateError('Could not repair the Firestore Emulator for this test');
+  }
+}
+
+Future<HttpClientResponse> _emulatorRequest({
+  required String method,
+  required String path,
+  Map<String, Object>? body,
+}) async {
+  final client = HttpClient();
+  final request = await client.openUrl(
+    method,
+    Uri(
+      scheme: 'http',
+      host: _firestoreEmulatorHost,
+      port: 8080,
+      path: path,
+    ),
+  );
+  request.headers.set(HttpHeaders.authorizationHeader, 'Bearer owner');
+  if (body != null) {
+    request.headers.contentType = ContentType.json;
+    request.write(jsonEncode(body));
+  }
+
+  return request.close();
+}
+
+String get _firestoreEmulatorHost => switch (defaultTargetPlatform) {
+  TargetPlatform.android => '10.0.2.2',
+  TargetPlatform.iOS => '127.0.0.1',
+  _ => throw UnsupportedError('Firebase Emulator tests require a simulator'),
+};
