@@ -78,6 +78,7 @@ flutter test integration_test/firebase_emulator_app_account_bootstrap_test.dart 
 flutter test integration_test/personal_fasting_activity_firestore_adapter_test.dart -d <device-id>
 flutter test integration_test/personal_fasting_activity_hydration_test.dart -d <device-id>
 flutter test integration_test/fasting_session_start_end_persistence_test.dart -d <device-id>
+flutter test integration_test/fasting_session_corrections_and_deletions_persistence_test.dart -d <device-id>
 ```
 
 The composition root connects both clients before any Auth or Firestore

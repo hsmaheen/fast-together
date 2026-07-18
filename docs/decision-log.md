@@ -86,3 +86,4 @@ Links: `docs/adr/0021-use-demo-only-flutterfire-emulator-bootstrap.md`, LIF-75
 - `0021` - Use demo-only FlutterFire emulator bootstrap
 - `0022` - Use an active-session sentinel for Personal Fasting Activity
 - `0023` - Persist Fasting Session lifecycle after durable repository write
+- `0024` - Persist ended Fasting Session corrections and deletions by exact durable state

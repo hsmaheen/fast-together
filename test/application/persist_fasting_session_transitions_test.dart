@@ -81,6 +81,50 @@ void main() {
     },
   );
 
+  test(
+    'ends the durable active Fasting Session when existing history is newer',
+    () async {
+      final accountId = AppAccountId('app-account');
+      final newerHistory = FastingSession(
+        id: FastingSessionId('newer-ended-session'),
+        startTime: DateTime.utc(2026, 7, 17, 8),
+        targetEndTime: DateTime.utc(2026, 7, 18),
+        actualEndTime: DateTime.utc(2026, 7, 18, 1),
+      );
+      final durableActive = FastingSession(
+        id: FastingSessionId('backdated-active-session'),
+        startTime: DateTime.utc(2026, 7, 15, 8),
+        targetEndTime: DateTime.utc(2026, 7, 16),
+      );
+      final snapshot = PersonalFastingActivitySnapshot(
+        activeSession: durableActive,
+        endedSessions: [newerHistory],
+      );
+      final repository = _InMemoryPersonalFastingActivityRepository(snapshot);
+      final transitions = PersistFastingSessionTransitions(
+        _FakeAppAccountSessionProvider(AppAccountSession(accountId)),
+        repository,
+      );
+      final tracker = FastingTracker.fromSnapshot(
+        snapshot: snapshot,
+        nowUtc: () => DateTime.utc(2026, 7, 20),
+      );
+
+      final outcome = await transitions.end(
+        tracker: tracker,
+        actualEndTime: DateTime.utc(2026, 7, 16),
+      );
+
+      expect(outcome, isA<PersistedFastingSessionTransition>());
+      final persisted = outcome as PersistedFastingSessionTransition;
+      expect(persisted.session.id, durableActive.id);
+      expect(
+        repository.snapshot.endedSessions.map((session) => session.id.value),
+        ['newer-ended-session', 'backdated-active-session'],
+      );
+    },
+  );
+
   test('repeats the same start as an idempotent durable upsert', () async {
     final repository = _InMemoryPersonalFastingActivityRepository();
     final transitions = PersistFastingSessionTransitions(
@@ -583,6 +627,45 @@ final class _InMemoryPersonalFastingActivityRepository
   }
 
   @override
+  Future<PersonalFastingActivitySnapshot> correctEndedSession(
+    AppAccountId accountId,
+    FastingSession previousSession,
+    FastingSession correctedSession,
+  ) async {
+    final persisted = _snapshot.endedSessions
+        .where((session) => session.id == previousSession.id)
+        .firstOrNull;
+    if (persisted == null ||
+        persisted.startTime != previousSession.startTime ||
+        persisted.targetEndTime != previousSession.targetEndTime ||
+        persisted.actualEndTime != previousSession.actualEndTime) {
+      throw StateError(
+        'Cannot correct a Fasting Session outside durable activity',
+      );
+    }
+    return upsert(accountId, correctedSession);
+  }
+
+  @override
+  Future<PersonalFastingActivitySnapshot> deleteExactEndedSession(
+    AppAccountId accountId,
+    FastingSession expectedSession,
+  ) async {
+    final persisted = _snapshot.endedSessions
+        .where((session) => session.id == expectedSession.id)
+        .firstOrNull;
+    if (persisted == null ||
+        persisted.startTime != expectedSession.startTime ||
+        persisted.targetEndTime != expectedSession.targetEndTime ||
+        persisted.actualEndTime != expectedSession.actualEndTime) {
+      throw StateError(
+        'Cannot delete a Fasting Session outside durable activity',
+      );
+    }
+    return deleteEndedSession(accountId, expectedSession.id);
+  }
+
+  @override
   Future<PersonalFastingActivitySnapshot> deleteEndedSession(
     AppAccountId accountId,
     FastingSessionId id,
@@ -611,6 +694,19 @@ final class _FailingPersonalFastingActivityRepository
   Future<PersonalFastingActivitySnapshot> endActiveSession(
     AppAccountId accountId,
     FastingSession endedSession,
+  ) => Future.error(StateError('Firestore unavailable'));
+
+  @override
+  Future<PersonalFastingActivitySnapshot> correctEndedSession(
+    AppAccountId accountId,
+    FastingSession previousSession,
+    FastingSession correctedSession,
+  ) => Future.error(StateError('Firestore unavailable'));
+
+  @override
+  Future<PersonalFastingActivitySnapshot> deleteExactEndedSession(
+    AppAccountId accountId,
+    FastingSession expectedSession,
   ) => Future.error(StateError('Firestore unavailable'));
 
   @override
@@ -651,6 +747,19 @@ final class _CommitThenThrowPersonalFastingActivityRepository
   Future<PersonalFastingActivitySnapshot> endActiveSession(
     AppAccountId accountId,
     FastingSession endedSession,
+  ) => throw UnimplementedError();
+
+  @override
+  Future<PersonalFastingActivitySnapshot> correctEndedSession(
+    AppAccountId accountId,
+    FastingSession previousSession,
+    FastingSession correctedSession,
+  ) => throw UnimplementedError();
+
+  @override
+  Future<PersonalFastingActivitySnapshot> deleteExactEndedSession(
+    AppAccountId accountId,
+    FastingSession expectedSession,
   ) => throw UnimplementedError();
 
   @override
@@ -700,6 +809,19 @@ final class _AccountScopedCommitThenThrowRepository
   Future<PersonalFastingActivitySnapshot> endActiveSession(
     AppAccountId accountId,
     FastingSession endedSession,
+  ) => throw UnimplementedError();
+
+  @override
+  Future<PersonalFastingActivitySnapshot> correctEndedSession(
+    AppAccountId accountId,
+    FastingSession previousSession,
+    FastingSession correctedSession,
+  ) => throw UnimplementedError();
+
+  @override
+  Future<PersonalFastingActivitySnapshot> deleteExactEndedSession(
+    AppAccountId accountId,
+    FastingSession expectedSession,
   ) => throw UnimplementedError();
 
   @override
