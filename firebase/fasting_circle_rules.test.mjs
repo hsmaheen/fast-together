@@ -464,7 +464,9 @@ test('Circle Membership never exposes another member Personal Fasting Activity',
         'appAccounts/member-1/fastingSessions/personal-session',
       ),
       {
-        startedAt: Timestamp.fromDate(new Date('2026-07-01T08:00:00Z')),
+        startTime: Timestamp.fromDate(new Date('2026-07-01T08:00:00Z')),
+        targetEndTime: Timestamp.fromDate(new Date('2026-07-02T00:00:00Z')),
+        actualEndTime: Timestamp.fromDate(new Date('2026-07-02T00:00:00Z')),
       },
     );
   });

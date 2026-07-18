@@ -77,11 +77,98 @@ service cloud.firestore {
         );
     }
 
+    function hasExactlyFields(data, fields) {
+      return data.keys().hasAll(fields) && data.keys().hasOnly(fields);
+    }
+
+    function isValidActivePersonalFastingSession(data) {
+      return hasExactlyFields(data, ['startTime', 'targetEndTime'])
+        && data.startTime is timestamp
+        && data.targetEndTime is timestamp
+        && data.targetEndTime > data.startTime;
+    }
+
+    function isValidEndedPersonalFastingSession(data) {
+      return hasExactlyFields(data, [
+          'startTime',
+          'targetEndTime',
+          'actualEndTime',
+        ])
+        && data.startTime is timestamp
+        && data.targetEndTime is timestamp
+        && data.targetEndTime > data.startTime
+        && data.actualEndTime is timestamp
+        && data.actualEndTime > data.startTime;
+    }
+
+    function statePointsToSessionAfter(uid, sessionId) {
+      let state = getAfter(
+        /databases/$(database)/documents/appAccounts/$(uid)/personalFastingActivity/current
+      );
+      return state == null
+        ? false
+        : hasExactlyFields(state.data, ['activeSessionId'])
+          && state.data.activeSessionId is string
+          && state.data.activeSessionId == sessionId;
+    }
+
+    function stateDoesNotPointToSessionAfter(uid, sessionId) {
+      let state = getAfter(
+        /databases/$(database)/documents/appAccounts/$(uid)/personalFastingActivity/current
+      );
+      return state == null ? true : state.data.activeSessionId != sessionId;
+    }
+
+    function isActiveSessionAfter(uid, sessionId) {
+      let session = getAfter(
+        /databases/$(database)/documents/appAccounts/$(uid)/fastingSessions/$(sessionId)
+      );
+      return session == null
+        ? false
+        : isValidActivePersonalFastingSession(session.data);
+    }
+
+    function isEndedSessionAfter(uid, sessionId) {
+      let session = getAfter(
+        /databases/$(database)/documents/appAccounts/$(uid)/fastingSessions/$(sessionId)
+      );
+      return session == null
+        ? false
+        : isValidEndedPersonalFastingSession(session.data);
+    }
+
     match /appAccounts/{uid} {
       allow read: if isOwner(uid);
 
       match /fastingSessions/{sessionId} {
-        allow read, write: if isOwner(uid);
+        allow read: if isOwner(uid);
+        allow create, update: if isOwner(uid)
+          && (
+            (
+              isValidActivePersonalFastingSession(request.resource.data)
+              && statePointsToSessionAfter(uid, sessionId)
+            )
+            ||
+            (
+              isValidEndedPersonalFastingSession(request.resource.data)
+              && stateDoesNotPointToSessionAfter(uid, sessionId)
+            )
+          );
+        allow delete: if isOwner(uid)
+          && isValidEndedPersonalFastingSession(resource.data)
+          && stateDoesNotPointToSessionAfter(uid, sessionId);
+      }
+
+      match /personalFastingActivity/current {
+        allow read: if isOwner(uid);
+        allow create: if isOwner(uid)
+          && hasExactlyFields(request.resource.data, ['activeSessionId'])
+          && request.resource.data.activeSessionId is string
+          && isActiveSessionAfter(uid, request.resource.data.activeSessionId);
+        allow delete: if isOwner(uid)
+          && hasExactlyFields(resource.data, ['activeSessionId'])
+          && resource.data.activeSessionId is string
+          && isEndedSessionAfter(uid, resource.data.activeSessionId);
       }
 
       match /circleMembershipState/current {

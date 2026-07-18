@@ -98,9 +98,16 @@ final class _FirebaseEmulatorAppAccountSessionProvider
 
   @override
   Future<AppAccountSession> signInOrCreateForLocalEmulator() async {
-    final existingSession = await currentSession();
-    if (existingSession != null) {
-      return existingSession;
+    try {
+      final credential = await _auth.signInWithEmailAndPassword(
+        email: _email,
+        password: _password,
+      );
+      return _sessionForUser(credential.user);
+    } on FirebaseAuthException catch (error) {
+      if (!_isMissingLocalEmulatorAccount(error)) {
+        rethrow;
+      }
     }
 
     try {
@@ -121,6 +128,14 @@ final class _FirebaseEmulatorAppAccountSessionProvider
       return _sessionForUser(credential.user);
     }
   }
+}
+
+bool _isMissingLocalEmulatorAccount(FirebaseAuthException error) {
+  return error.code == 'user-not-found' ||
+      error.code == 'invalid-credential' ||
+      error.code == 'INVALID_LOGIN_CREDENTIALS' ||
+      (error.code == 'unknown' &&
+          error.message?.contains('INVALID_LOGIN_CREDENTIALS') == true);
 }
 
 AppAccountSession _sessionForUser(User? user) {

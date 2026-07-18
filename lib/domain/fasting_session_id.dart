@@ -16,5 +16,13 @@ String _requireValue(String value) {
     throw ArgumentError.value(value, 'value', 'must not be empty');
   }
 
+  if (value.contains('/')) {
+    throw ArgumentError.value(
+      value,
+      'value',
+      'must not contain a Firestore path separator',
+    );
+  }
+
   return value;
 }
